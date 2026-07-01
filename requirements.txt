@@ -1,0 +1,13 @@
+streamlit>=1.35
+pandas>=2.0
+numpy>=1.24
+folium>=0.15
+streamlit-folium>=0.19
+
+# Geocodificacion automatica de la columna "Zona" (Nominatim/OpenStreetMap)
+geopy>=2.4
+
+# Lectura del Google Sheet publico como CSV: usa pd.read_csv() + requests,
+# ambos ya cubiertos por las dependencias de pandas/streamlit de arriba.
+# No se necesita gspread, google-auth ni st-gsheets-connection porque el
+# Sheet es publico ("Cualquier usuario con el enlace").
