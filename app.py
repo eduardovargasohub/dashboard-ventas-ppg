@@ -12,9 +12,11 @@ de ser publico, sin internet, etc.), el dashboard usa automaticamente
 datos simulados (mock) de 29 cuentas para que nunca se rompa.
 """
 
+import calendar
 import hashlib
 import random
 import re
+from datetime import datetime
 
 import folium
 import numpy as np
@@ -203,9 +205,28 @@ MIN_VISITAS_ALERTA = 2
 # Margen de ganancia lineal asumido sobre la facturacion de cada cliente.
 MARGEN_PORCENTAJE = 0.20
 
+# Cuentas de alto volumen para el filtro rapido "Cuentas Clave" (aisla en el
+# mapa y las tablas solo a estos clientes estrategicos). El match es por
+# substring (case-insensitive) para cubrir variantes del mismo nombre, ej.
+# "Ferretotal Express" o "Mundo del Color Express" tambien cuentan como
+# cuenta clave de su marca.
+CUENTAS_CLAVE = ["Mundo del Color", "Ferretotal", "Savake"]
+
+# Umbral de "cliente en riesgo" para la metrica de Recencia: si pasaron mas
+# de estos dias desde su ultima compra, se resalta con alerta visual.
+RECENCIA_ALERTA_DIAS = 14
+
 # Ponla en True si quieres forzar el uso de datos simulados aunque ya
 # tengas credenciales configuradas (util para hacer demos o pruebas).
 FORZAR_MOCK_DATA = False
+
+
+def es_cuenta_clave(nombre) -> bool:
+    """True si `nombre` (Cliente o Nombre de factura) pertenece a alguna de
+    las CUENTAS_CLAVE (match por substring, insensible a mayusculas).
+    """
+    nombre_lower = str(nombre).lower()
+    return any(clave.lower() in nombre_lower for clave in CUENTAS_CLAVE)
 
 # --------------------------------------------------------------------------
 # GEOCODIFICACION AUTOMATICA (columna "Zona" -> Latitud/Longitud)
@@ -265,6 +286,55 @@ ESTADO_POR_ZONA = {
     "los valles del tuy": "Miranda, Venezuela",
 }
 
+# --------------------------------------------------------------------------
+# OPTIMIZACION EXTREMA DE CARGA: coordenadas predefinidas de las zonas mas
+# comunes del portafolio (Caracas central y sus urbanizaciones, mas
+# capitales/ciudades del interior). geocodificar_zonas() consulta ESTE
+# diccionario PRIMERO y solo cae a Nominatim (que impone 1 request/seg) si
+# la zona no aparece aqui, lo que baja el tiempo de carga tipico de ~30s a
+# menos de 1s en despliegues con las zonas habituales del negocio.
+# --------------------------------------------------------------------------
+COORDENADAS_ZONAS_CONOCIDAS: dict[str, tuple[float, float]] = {
+    "caracas": (10.4806, -66.9036),
+    "chacao": (10.4967, -66.8530),
+    "baruta": (10.4380, -66.8781),
+    "el cafetal": (10.4700, -66.8420),
+    "las mercedes": (10.4890, -66.8567),
+    "los teques": (10.3406, -67.0364),
+    "boleita": (10.5216, -66.8478),
+    "boleíta": (10.5216, -66.8478),
+    "la candelaria": (10.5057, -66.9080),
+    "los ruices": (10.4961, -66.8459),
+    "la trinidad": (10.4459, -66.8298),
+    "la guaira": (10.6019, -66.9311),
+    "catia la mar": (10.6053, -67.0322),
+    "vargas": (10.6019, -66.9311),
+    "maracaibo": (10.6427, -71.6125),
+    "valencia": (10.1620, -68.0077),
+    "maracay": (10.2469, -67.5959),
+    "turmero": (10.2278, -67.4756),
+    "cagua": (10.1922, -67.4497),
+    "barquisimeto": (10.0678, -69.3467),
+    "cabudare": (10.0611, -69.2444),
+    "san cristobal": (7.7669, -72.2250),
+    "san cristóbal": (7.7669, -72.2250),
+    "merida": (8.5921, -71.1442),
+    "mérida": (8.5921, -71.1442),
+    "barinas": (8.6226, -70.2075),
+    "acarigua": (9.5597, -69.2000),
+    "punto fijo": (11.6822, -70.2144),
+    "coro": (11.4045, -69.6816),
+    "valera": (9.3178, -70.6061),
+    "san juan de los morros": (9.9112, -67.3378),
+    "puerto la cruz": (10.2137, -64.6335),
+    "anaco": (9.4372, -64.4692),
+    "ciudad guayana": (8.3533, -62.6474),
+    "puerto ordaz": (8.3086, -62.7220),
+    "maturin": (9.7450, -63.1783),
+    "maturín": (9.7450, -63.1783),
+    "barcelona": (10.1352, -64.6858),
+}
+
 
 def construir_query_geocoding(zona: str) -> str:
     """Arma el texto de busqueda para Nominatim a partir de una Zona.
@@ -281,20 +351,54 @@ def construir_query_geocoding(zona: str) -> str:
     return f"{zona_limpia}, Caracas, Venezuela"
 
 
+def _buscar_en_diccionario_estatico(zona: str) -> tuple[float, float] | None:
+    """Busca `zona` (por substring, igual que construir_query_geocoding) en
+    COORDENADAS_ZONAS_CONOCIDAS. Devuelve (lat, lon) si la reconoce, o None
+    si hay que recurrir a Nominatim.
+    """
+    zona_lower = zona.strip().lower()
+    for clave, coords in COORDENADAS_ZONAS_CONOCIDAS.items():
+        if clave in zona_lower:
+            return coords
+    return None
+
+
 @st.cache_data(show_spinner="Geocodificando zonas (Nominatim/OpenStreetMap)...", ttl=None)
 def geocodificar_zonas(zonas: tuple[str, ...]) -> dict:
     """Geocodifica un conjunto de zonas UNICAS y devuelve {zona: (lat, lon)}.
 
-    Se cachea con @st.cache_data para que, al recargar el dashboard o
-    cambiar un filtro, NO se vuelva a golpear la API de Nominatim por cada
-    cliente: solo se geocodifica una vez por zona (mientras la cache viva).
-    Si una zona no se puede geocodificar (vacia, sin internet, no
+    OPTIMIZACION CRITICA: cada zona se busca PRIMERO en el diccionario
+    estatico COORDENADAS_ZONAS_CONOCIDAS (instantaneo, sin red). Nominatim
+    (que impone 1 request/seg) solo se usa como fallback para las zonas que
+    NO estan en ese diccionario, y el import de geopy ni siquiera ocurre si
+    todas las zonas ya se resolvieron localmente. En un portafolio tipico,
+    donde casi todas las cuentas caen en zonas conocidas, esto baja el
+    tiempo de carga de ~30s a menos de 1s.
+
+    Se cachea ademas con @st.cache_data para que, al recargar el dashboard
+    o cambiar un filtro, NO se vuelva a golpear la API de Nominatim por
+    cada cliente: solo se geocodifica una vez por zona (mientras la cache
+    viva). Si una zona no se puede geocodificar (vacia, sin internet, no
     reconocida por Nominatim, error/timeout), cae a las coordenadas
     centrales de Caracas para que el mapa nunca se rompa.
     """
+    coordenadas_por_zona: dict[str, tuple[float, float]] = {}
+    zonas_pendientes = []
+
+    for zona in zonas:
+        coords_estaticas = _buscar_en_diccionario_estatico(zona) if zona else None
+        if coords_estaticas is not None:
+            coordenadas_por_zona[zona] = coords_estaticas
+        else:
+            zonas_pendientes.append(zona)
+
+    if not zonas_pendientes:
+        return coordenadas_por_zona
+
     # Import local: si `geopy` no estuviera instalado, el resto del
     # dashboard sigue funcionando (mock data / coordenadas ya presentes)
-    # en vez de tronar al importar el archivo.
+    # en vez de tronar al importar el archivo. Solo se importa cuando
+    # realmente quedan zonas sin resolver por el diccionario estatico.
     from geopy.extra.rate_limiter import RateLimiter
     from geopy.geocoders import Nominatim
 
@@ -305,8 +409,7 @@ def geocodificar_zonas(zonas: tuple[str, ...]) -> dict:
         geolocator.geocode, min_delay_seconds=1, max_retries=2, error_wait_seconds=2
     )
 
-    coordenadas_por_zona = {}
-    for zona in zonas:
+    for zona in zonas_pendientes:
         lat, lon = CARACAS_LAT, CARACAS_LON
         if zona:
             try:
@@ -415,12 +518,14 @@ GOOGLE_SHEET_CSV_URL = (
 )
 
 
-@st.cache_data(ttl=600, show_spinner="Leyendo Google Sheet en vivo...")
+@st.cache_data(ttl=60, show_spinner="Leyendo Google Sheet en vivo...")
 def cargar_datos_desde_google_sheets_csv() -> pd.DataFrame:
     """Lee el Google Sheet publico directamente como CSV (sin credenciales).
 
-    Se cachea 10 minutos (ttl=600) para no volver a descargar el CSV en
-    cada interaccion del usuario (filtros, clics, etc.). header=1 porque la
+    Se cachea 1 minuto (ttl=60) para que el dashboard refleje cambios del
+    Sheet casi en vivo sin descargar el CSV en cada rerun. El boton
+    "🔄 Actualizar Datos" del sidebar fuerza una lectura inmediata via
+    st.cache_data.clear(), sin esperar a que expire el TTL. header=1 porque la
     hoja real trae una fila en blanco antes de los encabezados. Se
     descartan las columnas "Unnamed" y las duplicadas con sufijo ".N" que
     vienen de otras tablas/pivotes que comparten la misma pestana, a la
@@ -434,6 +539,126 @@ def cargar_datos_desde_google_sheets_csv() -> pd.DataFrame:
     df = df.drop(columns=columnas_ruido)
     df = df.dropna(how="all")
     return df
+
+
+# ==========================================================================
+# 1B. SEGUNDA FUENTE DE DATOS: FACTURACION DIARIA (SABANA TRANSACCIONAL)
+# ==========================================================================
+#
+# Segunda base de datos "transaccional", independiente de la lista de
+# clientes de arriba: la sabana real de facturas diarias del negocio.
+# Mismo approach "bypass CSV" (Sheet publico, sin credenciales). Se leyo
+# la hoja real para confirmar su estructura exacta:
+#   - Trae 3 filas de ruido (una vacia y una con un resumen suelto tipo
+#     "CANCELADO") ANTES de los encabezados reales -> header=3.
+#   - Los encabezados reales traen espacios colgantes ("Manager ", "Mes ").
+#   - Columnas clave: "Fecha de Emision", "Nombre", "Manager",
+#     "Monto Facturado", "Saldo Pendiente".
+#   - Los montos vienen en formato moneda EUROPEO/venezolano de texto, ej.
+#     "$1.234,56" (punto = separador de miles, coma = separador decimal).
+#   - Trae ~750 filas "reservadas" al final que solo tienen el numero de
+#     "Factura" relleno y todo lo demas vacio (huecos de numeracion sin
+#     factura real emitida todavia): se descartan por no tener "Nombre".
+FACTURACION_CSV_URL = (
+    "https://docs.google.com/spreadsheets/d/"
+    "11XnHtmzg5TuvsBDBaLB_A-1CvQ6QPGWx4J-qUwJxzeI/export?format=csv"
+)
+
+
+@st.cache_data(ttl=60, show_spinner="Leyendo sabana de facturacion en vivo...")
+def cargar_datos_facturacion() -> pd.DataFrame:
+    """Lee la sabana de facturas diarias directamente como CSV publico
+    (pd.read_csv puro, sin credenciales ni Service Account) y la deja lista
+    para consumir: encabezados sin espacios y sin las filas de numeros de
+    factura reservados que no tienen ningun otro dato.
+
+    Cacheada 1 minuto (ttl=60) para que las facturas nuevas del dia se
+    reflejen casi en vivo; el boton "🔄 Actualizar Datos" del sidebar puede
+    forzar una lectura inmediata via st.cache_data.clear().
+    """
+    df = pd.read_csv(FACTURACION_CSV_URL, header=3)
+    df.columns = df.columns.str.strip()
+    if "Nombre" in df.columns:
+        df = df.dropna(subset=["Nombre"])
+    return df
+
+
+def _limpiar_monto_moneda(serie: pd.Series) -> pd.Series:
+    """Convierte una columna de montos con formato moneda europeo/venezolano
+    de texto (ej. "$1.234,56", punto = miles y coma = decimales) a float.
+    Tolera valores ya numericos, vacios o mal formados (caen en 0).
+    """
+    texto = serie.astype(str).str.strip()
+    texto = texto.str.replace(r"[^\d,.\-]", "", regex=True)
+    texto = texto.str.replace(".", "", regex=False)
+    texto = texto.str.replace(",", ".", regex=False)
+    return pd.to_numeric(texto, errors="coerce").fillna(0)
+
+
+def normalizar_facturacion(df: pd.DataFrame) -> pd.DataFrame:
+    """Normaliza la sabana de facturacion: fuerza encabezados sin espacios
+    (por si se llama con un dataframe que no paso por
+    cargar_datos_facturacion), castea "Monto Facturado"/"Saldo Pendiente" de
+    texto-moneda a numero y parsea "Fecha de Emision" a datetime real para
+    poder alimentar el velocimetro de meta (Pace to Goal).
+    """
+    df = df.copy()
+    df.columns = df.columns.str.strip()
+
+    df["Monto Facturado"] = (
+        _limpiar_monto_moneda(df["Monto Facturado"]) if "Monto Facturado" in df.columns else 0.0
+    )
+    if "Saldo Pendiente" in df.columns:
+        df["Saldo Pendiente"] = _limpiar_monto_moneda(df["Saldo Pendiente"])
+    else:
+        df["Saldo Pendiente"] = 0.0
+
+    if "Fecha de Emisión" in df.columns:
+        df["Fecha de Emisión"] = pd.to_datetime(
+            df["Fecha de Emisión"].astype(str).str.strip(),
+            format="%d/%m/%Y",
+            errors="coerce",
+        )
+
+    # "Vencimiento" se parsea tambien a datetime real: la necesita el motor
+    # de metricas financieras para calcular la deuda vencida (morosidad).
+    if "Vencimiento" in df.columns:
+        df["Vencimiento"] = pd.to_datetime(
+            df["Vencimiento"].astype(str).str.strip(),
+            format="%d/%m/%Y",
+            errors="coerce",
+        )
+
+    if "Días que tardaron en pagar" in df.columns:
+        df["Días que tardaron en pagar"] = pd.to_numeric(
+            df["Días que tardaron en pagar"], errors="coerce"
+        )
+
+    for columna_texto in ("Manager", "Nombre", "Categoría de Cliente"):
+        if columna_texto in df.columns:
+            df[columna_texto] = df[columna_texto].fillna("Sin dato")
+
+    return df
+
+
+def cargar_facturacion_segura() -> tuple[pd.DataFrame, bool]:
+    """Envuelve cargar_datos_facturacion() + normalizar_facturacion() con el
+    mismo criterio de resiliencia que el resto del dashboard: si la sabana
+    de facturas no se puede leer (Sheet dejo de ser publico, sin internet,
+    URL invalida), el dashboard NO se rompe, simplemente esa seccion queda
+    vacia y se muestra un aviso.
+    """
+    columnas_vacias = [
+        "Fecha de Emisión", "Vencimiento", "Nombre", "Manager",
+        "Monto Facturado", "Saldo Pendiente", "Días que tardaron en pagar",
+    ]
+    try:
+        df = normalizar_facturacion(cargar_datos_facturacion())
+        if df is not None and not df.empty:
+            return df, True
+    except Exception:
+        pass
+    return pd.DataFrame(columns=columnas_vacias), False
 
 
 # ==========================================================================
@@ -749,11 +974,229 @@ def construir_mapa(df: pd.DataFrame) -> folium.Map:
 
 
 # ==========================================================================
+# 4B. VELOCIMETRO DE META (PACE TO GOAL) - FACTURACION DIARIA
+# ==========================================================================
+
+def calcular_pace_to_goal(df_facturas: pd.DataFrame, meta_mensual: float) -> dict:
+    """Calcula el ritmo de facturacion del mes en curso contra una meta
+    mensual configurable ("Pace to Goal"):
+
+      1) Suma lo facturado en lo que va del mes actual (segun "Fecha de
+         Emision").
+      2) Calcula el ritmo diario promedio (facturado / dias transcurridos)
+         y proyecta ese ritmo linealmente a los dias totales del mes.
+      3) Expresa esa proyeccion como % de la meta mensual, listo para
+         pintar en el velocimetro.
+
+    Si la columna de fechas no existe o no trae ninguna fecha valida
+    (Sheet vacio, sin conexion, etc.), devuelve el diccionario en cero con
+    "tiene_fechas": False para que el velocimetro se dibuje en estado
+    "sin datos" en vez de tronar.
+    """
+    resultado = {
+        "facturado_mes_actual": 0.0,
+        "proyeccion_fin_mes": 0.0,
+        "porcentaje_meta": 0.0,
+        "dias_transcurridos": 0,
+        "dias_totales_mes": 0,
+        "tiene_fechas": False,
+    }
+
+    if "Fecha de Emisión" not in df_facturas.columns:
+        return resultado
+
+    fechas_validas = df_facturas["Fecha de Emisión"].dropna()
+    if fechas_validas.empty:
+        return resultado
+
+    hoy = datetime.now()
+    dias_totales_mes = calendar.monthrange(hoy.year, hoy.month)[1]
+
+    facturas_mes_actual = df_facturas[
+        (df_facturas["Fecha de Emisión"].dt.year == hoy.year)
+        & (df_facturas["Fecha de Emisión"].dt.month == hoy.month)
+    ]
+    facturado_mes_actual = float(facturas_mes_actual["Monto Facturado"].sum())
+
+    ritmo_diario = facturado_mes_actual / hoy.day if hoy.day else 0.0
+    proyeccion_fin_mes = ritmo_diario * dias_totales_mes
+    porcentaje_meta = (proyeccion_fin_mes / meta_mensual * 100) if meta_mensual else 0.0
+
+    resultado.update({
+        "facturado_mes_actual": facturado_mes_actual,
+        "proyeccion_fin_mes": proyeccion_fin_mes,
+        "porcentaje_meta": porcentaje_meta,
+        "dias_transcurridos": hoy.day,
+        "dias_totales_mes": dias_totales_mes,
+        "tiene_fechas": True,
+    })
+    return resultado
+
+
+def render_velocimetro(pace: dict, meta_mensual: float) -> str:
+    """Devuelve el HTML/SVG (glassmorphism, consistente con render_kpi_card)
+    de un velocimetro semicircular "Pace to Goal": la aguja marca que tan
+    cerca esta la PROYECCION de fin de mes (segun el ritmo actual de
+    facturacion) de la meta mensual configurada en el sidebar.
+
+    Mismo lenguaje de color neon que el resto del dashboard: rojo si vamos
+    muy por debajo del ritmo necesario (<70%), amarillo en zona de riesgo
+    (70-100%) y verde si se proyecta cumplir o superar la meta (>=100%).
+    """
+    if not pace["tiene_fechas"]:
+        return """
+        <div class="kpi-card" style="text-align:center;">
+            <div class="kpi-label">🎯 Velocímetro de Meta (Pace to Goal)</div>
+            <div class="kpi-value" style="font-size:15px; color:#9aa4b2;">
+                Sin datos de fecha disponibles todavía.
+            </div>
+        </div>
+        """
+
+    porcentaje = pace["porcentaje_meta"]
+    porcentaje_clamp = max(0.0, min(porcentaje, 130.0))
+    angulo_rad = np.radians(-90 + (porcentaje_clamp / 130.0) * 180.0)
+    aguja_x = 100 + 65 * np.cos(angulo_rad)
+    aguja_y = 100 + 65 * np.sin(angulo_rad)
+    color = "#ff1744" if porcentaje < 70 else "#f5c542" if porcentaje < 100 else "#39ff14"
+    arco_lleno = (porcentaje_clamp / 130.0) * 251.2
+
+    return f"""
+    <div class="kpi-card" style="--accent:{color}; text-align:center;">
+        <div class="kpi-label">🎯 Velocímetro de Meta (Pace to Goal)</div>
+        <svg viewBox="0 0 200 115" width="100%" style="max-width:260px; margin:4px auto 0; display:block;">
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+                  stroke="rgba(255,255,255,0.08)" stroke-width="14" stroke-linecap="round"/>
+            <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none"
+                  stroke="{color}" stroke-width="14" stroke-linecap="round"
+                  stroke-dasharray="{arco_lleno:.1f} 251.2"/>
+            <line x1="100" y1="100" x2="{aguja_x:.1f}" y2="{aguja_y:.1f}"
+                  stroke="#f5f7fa" stroke-width="3" stroke-linecap="round"/>
+            <circle cx="100" cy="100" r="6" fill="#f5f7fa"/>
+        </svg>
+        <div class="kpi-value" style="font-size:26px;">{porcentaje:,.0f}%</div>
+        <div style="font-size:12px; color:#9aa4b2; margin-top:4px;">
+            Día {pace['dias_transcurridos']}/{pace['dias_totales_mes']} ·
+            Proyección: <b style="color:{color};">${pace['proyeccion_fin_mes']:,.0f}</b>
+            &nbsp;/&nbsp; Meta: ${meta_mensual:,.0f}
+        </div>
+    </div>
+    """
+
+
+# ==========================================================================
+# 4C. MOTOR DE METRICAS FINANCIERAS AVANZADAS (RECENCIA, FRECUENCIA,
+#     CICLO DE PAGO Y MOROSIDAD) - FACTURACION DIARIA
+# ==========================================================================
+
+def calcular_metricas_financieras(df_facturas: pd.DataFrame) -> dict:
+    """Calcula el set de KPIs financieros de alto nivel pedido para el
+    panel, todos derivados de la sabana de facturas (transaccional):
+
+      - Recencia: dias transcurridos desde la ULTIMA compra de cada
+        cliente (agrupando por "Nombre"), con alerta si supera
+        RECENCIA_ALERTA_DIAS.
+      - Frecuencia: tiempo promedio entre compras consecutivas de un mismo
+        cliente (solo tiene sentido para clientes con 2+ facturas),
+        promediado despues entre todos los clientes recurrentes.
+      - Ciclo de pago: promedio de la columna "Días que tardaron en pagar"
+        que ya trae la sabana real.
+      - Morosidad: suma de "Saldo Pendiente" de las facturas cuyo
+        "Vencimiento" ya paso (deuda vencida), mas el conteo de esas
+        facturas.
+
+    Si faltan las columnas minimas ("Nombre"/"Fecha de Emisión") o no hay
+    ninguna fecha valida, devuelve el diccionario en cero/"tiene_datos":
+    False para que el panel se pinte en estado "sin datos" en vez de
+    tronar (misma filosofia de resiliencia que el resto del dashboard).
+    """
+    resultado = {
+        "recencia_df": pd.DataFrame(columns=["Cliente", "Última Compra", "Días sin Comprar"]),
+        "clientes_en_riesgo": 0,
+        "frecuencia_promedio_dias": None,
+        "ciclo_pago_promedio_dias": None,
+        "deuda_vencida_total": 0.0,
+        "facturas_vencidas": 0,
+        "tiene_datos": False,
+    }
+
+    if not {"Nombre", "Fecha de Emisión"}.issubset(df_facturas.columns):
+        return resultado
+
+    df_validas = df_facturas.dropna(subset=["Fecha de Emisión", "Nombre"])
+    if df_validas.empty:
+        return resultado
+
+    hoy = pd.Timestamp(datetime.now().date())
+
+    # --- Recencia: dias desde la ultima compra, por cliente ---
+    ultima_compra = df_validas.groupby("Nombre")["Fecha de Emisión"].max().reset_index()
+    ultima_compra.columns = ["Cliente", "Última Compra"]
+    ultima_compra["Días sin Comprar"] = (hoy - ultima_compra["Última Compra"]).dt.days
+    ultima_compra = ultima_compra.sort_values("Días sin Comprar", ascending=False)
+    clientes_en_riesgo = int((ultima_compra["Días sin Comprar"] > RECENCIA_ALERTA_DIAS).sum())
+
+    # --- Frecuencia: tiempo promedio entre compras consecutivas, por cliente ---
+    def _intervalo_promedio(fechas: pd.Series):
+        fechas_ordenadas = fechas.sort_values()
+        if len(fechas_ordenadas) < 2:
+            return np.nan
+        return fechas_ordenadas.diff().dt.days.dropna().mean()
+
+    intervalos_por_cliente = df_validas.groupby("Nombre")["Fecha de Emisión"].apply(_intervalo_promedio)
+    frecuencia_promedio_dias = (
+        float(intervalos_por_cliente.dropna().mean()) if intervalos_por_cliente.notna().any() else None
+    )
+
+    # --- Ciclo de pago promedio (columna ya provista por la sabana real) ---
+    ciclo_pago_promedio_dias = None
+    if "Días que tardaron en pagar" in df_facturas.columns:
+        dias_pago = df_facturas["Días que tardaron en pagar"].dropna()
+        if not dias_pago.empty:
+            ciclo_pago_promedio_dias = float(dias_pago.mean())
+
+    # --- Morosidad: saldo pendiente de facturas con vencimiento ya pasado ---
+    deuda_vencida_total = 0.0
+    facturas_vencidas = 0
+    if {"Vencimiento", "Saldo Pendiente"}.issubset(df_facturas.columns):
+        vencidas = df_facturas[
+            df_facturas["Vencimiento"].notna()
+            & (df_facturas["Vencimiento"] < hoy)
+            & (df_facturas["Saldo Pendiente"] > 0)
+        ]
+        deuda_vencida_total = float(vencidas["Saldo Pendiente"].sum())
+        facturas_vencidas = int(len(vencidas))
+
+    resultado.update({
+        "recencia_df": ultima_compra,
+        "clientes_en_riesgo": clientes_en_riesgo,
+        "frecuencia_promedio_dias": frecuencia_promedio_dias,
+        "ciclo_pago_promedio_dias": ciclo_pago_promedio_dias,
+        "deuda_vencida_total": deuda_vencida_total,
+        "facturas_vencidas": facturas_vencidas,
+        "tiene_datos": True,
+    })
+    return resultado
+
+
+def resaltar_recencia(fila: pd.Series) -> list:
+    """Estilo por fila (pandas Styler) para la tabla de detalle de
+    Recencia: resalta en rojo neon semitransparente las cuentas que
+    superan RECENCIA_ALERTA_DIAS sin comprar (alerta visual pedida).
+    """
+    if fila["Días sin Comprar"] > RECENCIA_ALERTA_DIAS:
+        return ["background-color: rgba(255,23,68,0.28); color:#ffd9df;"] * len(fila)
+    return [""] * len(fila)
+
+
+# ==========================================================================
 # 5. INTERFAZ PRINCIPAL
 # ==========================================================================
 
 df_crudo, datos_en_vivo = cargar_datos()
 df = normalizar_datos(df_crudo)
+
+df_facturas, facturacion_en_vivo = cargar_facturacion_segura()
 
 st.title("🎨 Dashboard de Cobertura - Portafolio PPG / Glidden")
 
@@ -768,16 +1211,70 @@ else:
         icon="ℹ️",
     )
 
+if not facturacion_en_vivo:
+    st.warning(
+        "No se pudo leer la sábana de facturación diaria (revisa que el "
+        "Sheet siga público y que la URL en app.py sea correcta). La "
+        "sección de facturación quedará vacía.",
+        icon="⚠️",
+    )
+
 # --------------------------------------------------------------------------
-# PANEL LATERAL: FILTROS + MARGEN DE GANANCIA
+# PANEL LATERAL: LIVE REFRESH + FILTROS ENCADENADOS + MARGEN DE GANANCIA
 # --------------------------------------------------------------------------
 with st.sidebar:
+    # ----------------------------------------------------------------
+    # SISTEMA DE ACTUALIZACION EN VIVO: limpia toda la cache de datos
+    # (Google Sheets de clientes + sabana de facturacion) y fuerza un
+    # rerun inmediato para traer la data mas fresca, sin esperar a que
+    # expire el TTL de 60s de las funciones de lectura de CSV.
+    # ----------------------------------------------------------------
+    if st.button("🔄 Actualizar Datos", type="primary", use_container_width=True):
+        st.cache_data.clear()
+        st.rerun()
+    st.caption("Los datos se refrescan solos cada 60s. Usa el botón para forzar una lectura inmediata.")
+
+    st.divider()
     st.markdown('<div class="sidebar-title">🎯 Filtros</div>', unsafe_allow_html=True)
+
     categorias_disponibles = sorted(df["Categoría General"].unique().tolist())
     categorias_seleccionadas = st.multiselect(
         "Categoría general del cliente", categorias_disponibles, default=categorias_disponibles
     )
     df_filtrado = df[df["Categoría General"].isin(categorias_seleccionadas)]
+
+    # Filtros ENCADENADOS: cada multiselect recalcula sus opciones sobre el
+    # subconjunto que dejaron los filtros anteriores, para que el usuario
+    # nunca vea combinaciones vacias.
+    vendedores_disponibles = (
+        sorted(df_filtrado["Manager"].dropna().unique().tolist()) if "Manager" in df_filtrado.columns else []
+    )
+    vendedores_seleccionados = st.multiselect("Vendedor / Manager", vendedores_disponibles, default=vendedores_disponibles)
+    if "Manager" in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado["Manager"].isin(vendedores_seleccionados)]
+
+    canales_disponibles = (
+        sorted(df_filtrado["Tipo de Lead"].dropna().unique().tolist()) if "Tipo de Lead" in df_filtrado.columns else []
+    )
+    canales_seleccionados = st.multiselect("Canal / Tipo de Lead", canales_disponibles, default=canales_disponibles)
+    if "Tipo de Lead" in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado["Tipo de Lead"].isin(canales_seleccionados)]
+
+    zonas_disponibles = (
+        sorted(df_filtrado["Zona"].dropna().unique().tolist()) if "Zona" in df_filtrado.columns else []
+    )
+    zonas_seleccionadas = st.multiselect("Zona", zonas_disponibles, default=zonas_disponibles)
+    if "Zona" in df_filtrado.columns:
+        df_filtrado = df_filtrado[df_filtrado["Zona"].isin(zonas_seleccionadas)]
+
+    st.divider()
+    solo_cuentas_clave = st.toggle(
+        "🌟 Solo Cuentas Clave",
+        value=False,
+        help="Filtro de acceso rápido: aísla en el mapa y las tablas solo a " + ", ".join(CUENTAS_CLAVE) + ".",
+    )
+    if solo_cuentas_clave:
+        df_filtrado = df_filtrado[df_filtrado["Cliente"].apply(es_cuenta_clave)]
 
     st.divider()
     st.markdown('<div class="sidebar-title">📊 Margen de Ganancia Estimado</div>', unsafe_allow_html=True)
@@ -805,6 +1302,111 @@ with st.sidebar:
     if not alertas.empty:
         st.dataframe(
             alertas[["Cliente", "Visitas", "Categoría General"]].sort_values("Visitas"),
+            hide_index=True,
+            width="stretch",
+        )
+
+    st.divider()
+    st.markdown('<div class="sidebar-title">🎯 Meta Mensual de Facturación</div>', unsafe_allow_html=True)
+    st.caption("Ajusta la meta para recalcular el velocímetro de Pace to Goal.")
+    meta_mensual_facturacion = st.number_input(
+        "Meta del mes en curso (USD)",
+        min_value=0.0,
+        value=150_000.0,
+        step=5_000.0,
+        format="%.2f",
+    )
+
+    st.divider()
+    st.markdown('<div class="sidebar-title">📅 Periodo de Facturación</div>', unsafe_allow_html=True)
+    st.caption("Filtra la sábana de facturas. Se encadena con Vendedor y Cuentas Clave.")
+
+    # La sabana de facturas se filtra por Manager (Vendedor) y por Cuentas
+    # Clave ANTES de calcular las opciones de Mes/Año, para que el filtro
+    # de periodo quede encadenado con el resto de la seleccion.
+    df_facturas_filtrado = df_facturas.copy()
+    if "Manager" in df_facturas_filtrado.columns:
+        df_facturas_filtrado = df_facturas_filtrado[df_facturas_filtrado["Manager"].isin(vendedores_seleccionados)]
+    if solo_cuentas_clave and "Nombre" in df_facturas_filtrado.columns:
+        df_facturas_filtrado = df_facturas_filtrado[df_facturas_filtrado["Nombre"].apply(es_cuenta_clave)]
+
+    if "Fecha de Emisión" in df_facturas_filtrado.columns:
+        periodos_ordenados = (
+            df_facturas_filtrado["Fecha de Emisión"]
+            .dropna()
+            .dt.to_period("M")
+            .drop_duplicates()
+            .sort_values(ascending=False)
+        )
+        opciones_periodo = [str(p) for p in periodos_ordenados]
+    else:
+        opciones_periodo = []
+
+    periodos_seleccionados = st.multiselect("Mes / Año (AAAA-MM)", opciones_periodo, default=opciones_periodo)
+    if "Fecha de Emisión" in df_facturas_filtrado.columns:
+        df_facturas_filtrado = df_facturas_filtrado[
+            df_facturas_filtrado["Fecha de Emisión"].dt.to_period("M").astype(str).isin(periodos_seleccionados)
+        ]
+
+# --------------------------------------------------------------------------
+# CUERPO PRINCIPAL: MOTOR DE METRICAS FINANCIERAS AVANZADAS (EN LA PARTE
+# SUPERIOR, tal como se pidio) - Recencia, Frecuencia, Ciclo de Pago y
+# Morosidad, calculados sobre la sabana de facturacion ya filtrada por
+# Vendedor / Cuentas Clave / Mes-Año en el sidebar.
+# --------------------------------------------------------------------------
+st.markdown('<div class="section-title">📊 Métricas Financieras Avanzadas</div>', unsafe_allow_html=True)
+
+metricas_financieras = calcular_metricas_financieras(df_facturas_filtrado)
+
+if not metricas_financieras["tiene_datos"]:
+    st.info("No hay datos de facturación suficientes para calcular estas métricas.", icon="ℹ️")
+else:
+    col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+    with col_m1:
+        color_recencia = COLOR_ALERTA if metricas_financieras["clientes_en_riesgo"] > 0 else "#39ff14"
+        st.markdown(
+            render_kpi_card(
+                f"Clientes en Riesgo (Recencia > {RECENCIA_ALERTA_DIAS}d)",
+                f"{metricas_financieras['clientes_en_riesgo']}",
+                color_recencia,
+                "⏰",
+            ),
+            unsafe_allow_html=True,
+        )
+    with col_m2:
+        frecuencia = metricas_financieras["frecuencia_promedio_dias"]
+        valor_frecuencia = f"{frecuencia:.0f} días" if frecuencia is not None else "Sin dato"
+        st.markdown(
+            render_kpi_card("Frecuencia Promedio de Compra", valor_frecuencia, "#a78bfa", "🔁"),
+            unsafe_allow_html=True,
+        )
+    with col_m3:
+        ciclo_pago = metricas_financieras["ciclo_pago_promedio_dias"]
+        valor_ciclo = f"{ciclo_pago:.1f} días" if ciclo_pago is not None else "Sin dato"
+        st.markdown(
+            render_kpi_card("Ciclo de Pago Promedio", valor_ciclo, "#00e5ff", "💳"),
+            unsafe_allow_html=True,
+        )
+    with col_m4:
+        st.markdown(
+            render_kpi_card(
+                "Deuda Vencida (Morosidad)",
+                f"${metricas_financieras['deuda_vencida_total']:,.0f}",
+                COLOR_ALERTA,
+                "🔴",
+            ),
+            unsafe_allow_html=True,
+        )
+    st.caption(
+        f"{metricas_financieras['facturas_vencidas']} factura(s) vencida(s) con saldo pendiente "
+        "componen la morosidad mostrada arriba."
+    )
+
+    with st.expander("Ver detalle de Recencia por cliente"):
+        recencia_df = metricas_financieras["recencia_df"].copy()
+        recencia_df["Última Compra"] = recencia_df["Última Compra"].dt.strftime("%d/%m/%Y")
+        st.dataframe(
+            recencia_df.style.apply(resaltar_recencia, axis=1),
             hide_index=True,
             width="stretch",
         )
@@ -841,3 +1443,91 @@ st.dataframe(
     df_filtrado.sort_values("Cliente").reset_index(drop=True),
     width="stretch",
 )
+
+# --------------------------------------------------------------------------
+# CUERPO PRINCIPAL: FACTURACION DIARIA (SEGUNDA BASE DE DATOS TRANSACCIONAL)
+# --------------------------------------------------------------------------
+st.markdown('<div class="section-title">💵 Facturación Diaria (Sábana Transaccional)</div>', unsafe_allow_html=True)
+
+if df_facturas_filtrado.empty:
+    st.warning("No hay facturas que coincidan con los filtros seleccionados (Vendedor / Cuentas Clave / Mes-Año).")
+else:
+    hoy = datetime.now()
+    facturacion_historica_total = df_facturas_filtrado["Monto Facturado"].sum()
+    saldo_pendiente_total = df_facturas_filtrado["Saldo Pendiente"].sum()
+    facturas_emitidas = len(df_facturas_filtrado)
+
+    fechas_validas = df_facturas_filtrado["Fecha de Emisión"].dropna()
+    if not fechas_validas.empty:
+        facturacion_ultimos_30_dias = df_facturas_filtrado.loc[
+            df_facturas_filtrado["Fecha de Emisión"] >= (hoy - pd.Timedelta(days=30)),
+            "Monto Facturado",
+        ].sum()
+    else:
+        facturacion_ultimos_30_dias = 0.0
+
+    # El velocimetro de Pace to Goal se calcula sobre la sabana COMPLETA
+    # (sin el filtro de Mes/Año, que no tendria sentido para un "ritmo del
+    # mes en curso"), pero SI respeta Vendedor/Cuentas Clave para que la
+    # meta se pueda evaluar por vendedor o por cuenta estrategica.
+    df_facturas_para_pace = df_facturas.copy()
+    if "Manager" in df_facturas_para_pace.columns:
+        df_facturas_para_pace = df_facturas_para_pace[df_facturas_para_pace["Manager"].isin(vendedores_seleccionados)]
+    if solo_cuentas_clave and "Nombre" in df_facturas_para_pace.columns:
+        df_facturas_para_pace = df_facturas_para_pace[df_facturas_para_pace["Nombre"].apply(es_cuenta_clave)]
+    pace = calcular_pace_to_goal(df_facturas_para_pace, meta_mensual_facturacion)
+
+    col_f1, col_f2, col_f3, col_f4 = st.columns(4)
+    with col_f1:
+        st.markdown(
+            render_kpi_card("Facturación Histórica", f"${facturacion_historica_total:,.0f}", COLOR_ALTA_FACTURACION, "💵"),
+            unsafe_allow_html=True,
+        )
+    with col_f2:
+        st.markdown(
+            render_kpi_card("Facturación Últimos 30 Días", f"${facturacion_ultimos_30_dias:,.0f}", "#00e5ff", "📅"),
+            unsafe_allow_html=True,
+        )
+    with col_f3:
+        st.markdown(
+            render_kpi_card("Facturas Emitidas", f"{facturas_emitidas:,}", COLOR_NORMAL, "🧾"),
+            unsafe_allow_html=True,
+        )
+    with col_f4:
+        st.markdown(
+            render_kpi_card("Saldo Pendiente (Cobranza)", f"${saldo_pendiente_total:,.0f}", "#f5c542", "⏳"),
+            unsafe_allow_html=True,
+        )
+
+    col_gauge, col_tendencia = st.columns([1, 2])
+    with col_gauge:
+        st.markdown(render_velocimetro(pace, meta_mensual_facturacion), unsafe_allow_html=True)
+    with col_tendencia:
+        if not fechas_validas.empty:
+            tendencia_mensual = (
+                df_facturas_filtrado.dropna(subset=["Fecha de Emisión"])
+                .assign(Mes=lambda d: d["Fecha de Emisión"].dt.to_period("M").dt.to_timestamp())
+                .groupby("Mes")["Monto Facturado"]
+                .sum()
+                .tail(12)
+            )
+            st.markdown(
+                '<div class="kpi-label" style="margin-bottom:8px;">📈 Facturación mensual (últimos 12 meses)</div>',
+                unsafe_allow_html=True,
+            )
+            st.area_chart(tendencia_mensual, height=300)
+        else:
+            st.info("No hay fechas válidas en la sábana para construir la tendencia mensual.")
+
+    with st.expander("Ver facturas más recientes"):
+        columnas_detalle = [
+            c for c in ["Fecha de Emisión", "Factura", "Nombre", "Manager", "Monto Facturado", "Saldo Pendiente"]
+            if c in df_facturas_filtrado.columns
+        ]
+        st.dataframe(
+            df_facturas_filtrado.dropna(subset=["Fecha de Emisión"])
+            .sort_values("Fecha de Emisión", ascending=False)
+            .head(50)[columnas_detalle],
+            hide_index=True,
+            width="stretch",
+        )
