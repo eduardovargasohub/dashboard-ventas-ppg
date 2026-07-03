@@ -36,16 +36,17 @@ st.set_page_config(
 )
 
 # --------------------------------------------------------------------------
-# CSS PREMIUM (DARK MODE) - inyectado una sola vez por render.
-# Oculta el chrome por defecto de Streamlit, aplica el fondo oscuro, las
-# tarjetas KPI tipo "glassmorphism" y los titulos de seccion. El tema base
-# (colores de los widgets nativos: sidebar, multiselect, dataframe, etc.)
-# se define ademas en .streamlit/config.toml para que TODO el dashboard,
-# no solo lo que inyectamos por CSS, se vea consistente en modo oscuro.
+# CSS "SAAS MODERNO" (DARK, PLANO) - inyectado una sola vez por render.
+# Prioridad #1: legibilidad. Fondo plano muy oscuro (sin degradados),
+# tarjetas con borde fino de 1px (sin glassmorphism/blur/sombras pesadas)
+# y mucho espacio en blanco (padding generoso). El tema base (colores de
+# los widgets nativos: sidebar, multiselect, dataframe, etc.) se define
+# ademas en .streamlit/config.toml para que TODO el dashboard, no solo lo
+# que inyectamos por CSS, se vea consistente en modo oscuro.
 # --------------------------------------------------------------------------
 PREMIUM_CSS = """
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 
 html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
 
@@ -59,91 +60,115 @@ html, body, [class*="css"] { font-family: 'Inter', sans-serif; }
     height: 0;
 }
 
-/* Fondo general con degrade sutil (dark navy / charcoal premium). */
+/* Fondo plano, muy oscuro, sin degradados. */
 .stApp {
-    background: radial-gradient(circle at 15% 0%, #131a2a 0%, #0b0f19 55%, #070a10 100%);
+    background: #0d1117;
 }
 
-/* Menos margen torpe alrededor del contenido para que el mapa domine. */
+/* Espacio en blanco generoso alrededor del contenido. */
 .block-container {
-    padding-top: 1.2rem;
-    padding-bottom: 2rem;
-    padding-left: 2.2rem;
-    padding-right: 2.2rem;
+    padding-top: 2rem;
+    padding-bottom: 3rem;
+    padding-left: 3rem;
+    padding-right: 3rem;
     max-width: 1500px;
 }
 
-/* Sidebar con tono ligeramente distinto al fondo principal. */
+/* Sidebar con el mismo fondo plano, separada solo por un borde fino. */
 section[data-testid="stSidebar"] {
-    background: linear-gradient(180deg, #10141f 0%, #0b0f19 100%);
-    border-right: 1px solid rgba(255,255,255,0.06);
+    background: #0d1117;
+    border-right: 1px solid rgba(255,255,255,0.08);
 }
 
-/* Tarjeta glassmorphism reutilizada por el velocímetro de Pace to Goal
-   (render_velocimetro). El color de acento se pasa por variable CSS
-   inline (--accent). Las métricas KPI usan st.metric nativo (ver bloque
-   "stMetric" más abajo), que soporta tooltips (help=...). */
+/* Tarjeta plana reutilizada por el velocímetro de Pace to Goal y por los
+   estados vacios motivacionales: borde fino de 1px, sin sombra ni blur,
+   padding amplio para que respire. */
 .kpi-card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+    background: #12161f;
     border: 1px solid rgba(255,255,255,0.08);
-    border-left: 3px solid var(--accent, #00e5ff);
-    border-radius: 16px;
-    padding: 16px 18px;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
-    margin-bottom: 10px;
-    transition: transform 0.15s ease;
+    border-radius: 10px;
+    padding: 24px 22px;
+    margin-bottom: 12px;
 }
-.kpi-card:hover { transform: translateY(-2px); }
-.kpi-icon { font-size: 18px; opacity: 0.85; margin-bottom: 6px; }
+.kpi-icon { font-size: 16px; opacity: 0.75; margin-bottom: 8px; }
 .kpi-label {
-    font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
-    color: #9aa4b2; font-weight: 600; margin-bottom: 6px;
+    font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase;
+    color: #8b949e; font-weight: 600; margin-bottom: 8px;
 }
-.kpi-value { font-size: 24px; font-weight: 800; color: #f5f7fa; }
+.kpi-value { font-size: 26px; font-weight: 700; color: #e6edf3; }
 
-/* Tarjetas de metricas nativas (st.metric): mismo lenguaje visual
-   glassmorphism que .kpi-card, para que cada metrica pueda traer su
-   tooltip (help="...") sin perder la estetica premium del dashboard. */
+/* Tarjetas de metricas nativas (st.metric): mismo lenguaje visual plano
+   que .kpi-card, para que cada metrica pueda traer su tooltip
+   (help="...") sin sombras ni degradados pesados. */
 div[data-testid="stMetric"] {
-    background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.015));
+    background: #12161f;
     border: 1px solid rgba(255,255,255,0.08);
-    border-left: 3px solid #00e5ff;
-    border-radius: 16px;
-    padding: 14px 18px;
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.35);
+    border-radius: 10px;
+    padding: 20px 22px;
 }
-div[data-testid="stMetricLabel"] { color: #9aa4b2 !important; font-weight: 600; }
-div[data-testid="stMetricValue"] { color: #f5f7fa !important; }
+div[data-testid="stMetricLabel"] { color: #8b949e !important; font-weight: 600; }
+div[data-testid="stMetricValue"] { color: #e6edf3 !important; }
 /* El icono "?" de ayuda de st.metric hereda el color por defecto de
    Streamlit; se resalta un poco para que sea obvio que es interactivo. */
-div[data-testid="stMetric"] [data-testid="stTooltipIcon"] { color: #00e5ff !important; }
+div[data-testid="stMetric"] [data-testid="stTooltipIcon"] { color: #58a6ff !important; }
 
-/* Titulos de seccion del cuerpo principal y del sidebar. */
+/* Titulos de seccion del cuerpo principal y del sidebar: linea fina en
+   vez del borde grueso de acento neon. */
 .section-title {
-    font-size: 19px; font-weight: 800; color: #f5f7fa;
-    margin: 26px 0 12px 0; padding-left: 12px;
-    border-left: 4px solid #00e5ff;
+    font-size: 18px; font-weight: 700; color: #e6edf3;
+    margin: 32px 0 16px 0; padding-bottom: 8px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 .sidebar-title {
-    font-size: 14px; font-weight: 700; color: #f5f7fa;
-    letter-spacing: 0.02em; margin: 4px 0 10px 0; padding-bottom: 6px;
-    border-bottom: 2px solid rgba(0,229,255,0.35);
+    font-size: 13px; font-weight: 700; color: #e6edf3;
+    letter-spacing: 0.02em; margin: 4px 0 12px 0; padding-bottom: 6px;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
 }
 
-/* Marco premium alrededor del iframe del mapa de Folium (bordes
-   redondeados + sombra), evitando el recuadro por defecto sin estilo. */
+/* Marco fino alrededor del iframe del mapa de Folium, sin sombra pesada. */
 [data-testid="stIFrame"] {
-    border-radius: 18px;
+    border-radius: 10px;
     overflow: hidden;
-    box-shadow: 0 14px 40px rgba(0,0,0,0.45);
-    border: 1px solid rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.08);
 }
 
-h1 { font-weight: 800 !important; letter-spacing: -0.02em; }
+/* Vista principal (st.radio) como botones grandes horizontales, en vez
+   del radio nativo minimalista, para que las 3 vistas exclusivas del
+   dashboard sean claramente clickeables. */
+div[role="radiogroup"] {
+    gap: 10px;
+    flex-wrap: wrap;
+}
+div[role="radiogroup"] label {
+    background: #12161f;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    padding: 14px 22px !important;
+    flex: 1 1 220px;
+    justify-content: center;
+    transition: border-color 0.15s ease, background-color 0.15s ease;
+}
+div[role="radiogroup"] label:hover { border-color: rgba(88,166,255,0.5); }
+div[role="radiogroup"] label:has(input:checked) {
+    border-color: #58a6ff;
+    background: #17202c;
+}
+div[role="radiogroup"] label p { font-size: 15px !important; font-weight: 600; }
+
+/* Feedback de estado sin ruido tecnico: reemplaza los st.warning por un
+   mensaje motivacional centrado y calmado cuando un filtro no trae datos. */
+.empty-state {
+    text-align: center;
+    padding: 48px 24px;
+    color: #8b949e;
+    font-size: 15px;
+    background: #12161f;
+    border: 1px dashed rgba(255,255,255,0.14);
+    border-radius: 10px;
+}
+.empty-state-icon { font-size: 30px; display: block; margin-bottom: 12px; }
+
+h1 { font-weight: 700 !important; letter-spacing: -0.01em; color: #e6edf3; }
 </style>
 """
 st.markdown(PREMIUM_CSS, unsafe_allow_html=True)
@@ -198,6 +223,13 @@ COLUMN_ALIASES = {
     "sector": "Zona",
     "region": "Zona",
     "región": "Zona",
+    # Limite de credito por cliente: lo consume el Motor de Riesgo
+    # Crediticio (Nivel de Exposicion = Saldo Pendiente / Limite).
+    "limite de credito": "Límite de Crédito",
+    "límite de crédito": "Límite de Crédito",
+    "limite credito": "Límite de Crédito",
+    "limite": "Límite de Crédito",
+    "credit limit": "Límite de Crédito",
 }
 
 # Columnas realmente indispensables para poder mostrar algo en el mapa y
@@ -519,15 +551,17 @@ def asegurar_visitas(df: pd.DataFrame) -> pd.DataFrame:
 # --------------------------------------------------------------------------
 
 def normalizar_columnas_clave(df: pd.DataFrame, columnas: list[str]) -> pd.DataFrame:
-    """Fuerza texto, recorta espacios y pasa a minusculas las `columnas`
-    indicadas (si existen en `df`). Esta es la version "logica" del dato,
-    la que se usa para filtrar y cruzar: la UI se encarga aparte de
-    mostrarla capitalizada (ver `titular_para_mostrar` / `format_func`).
+    """Fuerza texto, recorta espacios y pasa a Title Case las `columnas`
+    indicadas (si existen en `df`). Es la version canonica del dato, la
+    misma en TODOS los dataframes (Clientes, Facturas), lo que garantiza
+    que los filtros encadenados y el pd.merge Facturas <-> Clientes por
+    nombre nunca fallen por "CARACAS " vs "caracas" o "FERRETOTAL" vs
+    "Ferretotal".
     """
     df = df.copy()
     for columna in columnas:
         if columna in df.columns:
-            df[columna] = df[columna].astype(str).str.strip().str.lower()
+            df[columna] = df[columna].astype(str).str.strip().str.title()
     return df
 
 
@@ -694,12 +728,12 @@ def normalizar_facturacion(df: pd.DataFrame) -> pd.DataFrame:
         if columna_texto in df.columns:
             df[columna_texto] = df[columna_texto].fillna("Sin dato")
 
-    # Limpieza a prueba de balas: Manager y Categoría de Cliente son
-    # columnas clave para el cruce/filtro encadenado con la lista de
-    # Clientes, asi que se normalizan igual (texto, sin espacios, en
-    # minusculas). "Nombre" NO se toca: se muestra tal cual viene del
-    # Sheet (es el nombre del cliente, no una columna de filtro).
-    df = normalizar_columnas_clave(df, ["Manager", "Categoría de Cliente"])
+    # Limpieza a prueba de balas: Manager, Categoría de Cliente y Nombre
+    # son columnas clave para el cruce/filtro encadenado con la lista de
+    # Clientes, asi que se normalizan igual (texto, sin espacios, Title
+    # Case). "Nombre" SI se normaliza ahora: es la llave del Left Join
+    # con la lista de Clientes para traer el Límite de Crédito.
+    df = normalizar_columnas_clave(df, ["Manager", "Categoría de Cliente", "Nombre"])
 
     return df
 
@@ -1010,6 +1044,14 @@ def normalizar_datos(df: pd.DataFrame) -> pd.DataFrame:
     monto_texto = df["Monto Total"].astype(str).str.replace(r"[^0-9.\-]", "", regex=True)
     df["Monto Total"] = pd.to_numeric(monto_texto, errors="coerce").fillna(0)
 
+    # "Límite de Crédito" (opcional): lo consume el Motor de Riesgo
+    # Crediticio via el cruce con la sabana de facturas. Se conserva NaN
+    # cuando viene en blanco: un limite vacio se interpreta como limite
+    # infinito (exposicion 0), NUNCA como division por cero.
+    if "Límite de Crédito" in df.columns:
+        limite_texto = df["Límite de Crédito"].astype(str).str.replace(r"[^0-9.\-]", "", regex=True)
+        df["Límite de Crédito"] = pd.to_numeric(limite_texto, errors="coerce")
+
     if "Categoría General" in df.columns:
         df["Categoría General"] = df["Categoría General"].fillna("Sin dato")
     else:
@@ -1020,12 +1062,12 @@ def normalizar_datos(df: pd.DataFrame) -> pd.DataFrame:
             df[columna_opcional] = df[columna_opcional].fillna("Sin dato")
 
     # Limpieza a prueba de balas ANTES de cualquier filtro encadenado o
-    # cruce con la sábana de facturación: Manager y Categoría General se
-    # normalizan a texto sin espacios y en minúsculas (Zona se normaliza
-    # más abajo, después de usarse para geocodificar, para no alterar la
-    # búsqueda en Nominatim). La UI sigue mostrando estos valores
-    # capitalizados vía `titular_para_mostrar` / `format_func`.
-    df = normalizar_columnas_clave(df, ["Manager", "Categoría General"])
+    # cruce con la sábana de facturación: Cliente, Manager y Categoría
+    # General se normalizan a texto sin espacios y en Title Case (Zona se
+    # normaliza más abajo, después de usarse para geocodificar, para no
+    # alterar la búsqueda en Nominatim). "Cliente" entra aquí porque es la
+    # llave del Left Join con la sábana de facturas (Límite de Crédito).
+    df = normalizar_columnas_clave(df, ["Cliente", "Manager", "Categoría General"])
 
     # Resuelve coordenadas (directas o geocodificadas via "Zona", con
     # fallback al centro de Caracas) y garantiza la columna "Visitas".
@@ -1172,37 +1214,27 @@ def construir_mapa(df: pd.DataFrame, vista_general: bool = False) -> folium.Map:
 
 
 @st.fragment
-def render_mapa_y_tabla(df_mapa: pd.DataFrame, vista_general: bool) -> None:
-    """Renderiza el mapa (folium_static, sin canal bidireccional con
-    Python) y la tabla de detalle dentro de un @st.fragment.
+def render_mapa(df_mapa: pd.DataFrame, vista_general: bool) -> None:
+    """Renderiza SOLO el mapa clusterizado (folium_static, sin canal
+    bidireccional con Python) dentro de un @st.fragment, para que
+    interactuar con el mapa nunca dispare un rerun de todo el dashboard.
 
-    Al ser un fragmento, esta funcion se aisla del resto del script: si en
-    el futuro se agrega algun widget interactivo aqui dentro, su rerun
-    quedaria contenido a este bloque en vez de volver a ejecutar TODO el
-    dashboard (Odoo, geocodificacion, metricas financieras, etc.), que es
-    la causa tipica de la "pantalla opaca" al interactuar con el mapa o la
-    tabla.
+    Se llama únicamente bajo demanda: cuando el usuario activa el
+    interruptor "Mostrar Mapa" en la vista Radar Comercial (ver sección
+    5). Nunca se construye en la carga inicial de la página, que es lo
+    más costoso de este dashboard (geocodificación + cientos de pines).
     """
-    st.markdown('<div class="section-title">Mapa de cobertura</div>', unsafe_allow_html=True)
     if df_mapa.empty:
-        st.warning("No hay cuentas que coincidan con los filtros seleccionados.")
-    else:
-        mapa = construir_mapa(df_mapa, vista_general=vista_general)
-        # width=None -> el mapa ocupa el 100% del ancho del contenedor. Se
-        # usa folium_static (en vez de st_folium) porque renderiza el mapa
-        # como HTML estatico dentro de un iframe: no reenvia eventos de
-        # pan/zoom de vuelta a Python, asi que interactuar con el mapa
-        # nunca dispara un rerun de Streamlit.
-        folium_static(mapa, width=None, height=620)
+        mostrar_estado_vacio("No se encontraron registros activos para este filtro.", icono="🗺️")
+        return
 
-    st.markdown('<div class="section-title">Detalle de cuentas</div>', unsafe_allow_html=True)
-    st.dataframe(
-        con_columnas_tituladas(
-            df_mapa.sort_values("Cliente").reset_index(drop=True),
-            ["Manager", "Zona", "Categoría General"],
-        ),
-        width="stretch",
-    )
+    mapa = construir_mapa(df_mapa, vista_general=vista_general)
+    # width=None -> el mapa ocupa el 100% del ancho del contenedor. Se usa
+    # folium_static (en vez de st_folium) porque renderiza el mapa como
+    # HTML estatico dentro de un iframe: no reenvia eventos de pan/zoom de
+    # vuelta a Python, asi que interactuar con el mapa nunca dispara un
+    # rerun de Streamlit.
+    folium_static(mapa, width=None, height=620)
 
 
 # ==========================================================================
@@ -1427,14 +1459,259 @@ def calcular_metricas_financieras(df_facturas: pd.DataFrame) -> dict:
     return resultado
 
 
-def resaltar_recencia(fila: pd.Series) -> list:
-    """Estilo por fila (pandas Styler) para la tabla de detalle de
-    Recencia: resalta en rojo neon semitransparente las cuentas que
-    superan RECENCIA_ALERTA_DIAS sin comprar (alerta visual pedida).
+# ==========================================================================
+# 4D. MOTOR DE RIESGO CREDITICIO Y COBRANZA (Cruce Facturas <-> Clientes)
+# ==========================================================================
+#
+# Umbral (dias de atraso) a partir del cual una deuda vencida se marca
+# como "Crítico" en la Alerta de la tabla de Acción Inmediata.
+DIAS_DEUDA_CRITICA = 30
+
+# Umbrales de Nivel de Exposición (Saldo Pendiente / Límite de Crédito):
+# > 1.0 el cliente ya se comió todo su límite (Crítico); > 0.8 está por
+# agotarlo (Precaución).
+EXPOSICION_CRITICA = 1.0
+EXPOSICION_PRECAUCION = 0.8
+
+COLUMNAS_TABLA_CARTERA = [
+    "Cliente", "Monto Pendiente", "Días de Vencimiento", "Nivel de Exposición", "Alerta",
+]
+
+
+def cruzar_facturas_con_clientes(df_facturas: pd.DataFrame, df_clientes: pd.DataFrame) -> pd.DataFrame:
+    """Cruce vital: Left Join de la sabana de Facturas con la lista de
+    Clientes por nombre (Nombre <-> Cliente, ambos ya normalizados a Title
+    Case por normalizar_columnas_clave) para traer el "Límite de Crédito"
+    hacia cada factura. Si la lista de clientes no trae esa columna, las
+    facturas quedan con Límite NaN (= límite infinito, exposición 0) y el
+    dashboard sigue funcionando.
     """
-    if fila["Días sin Comprar"] > RECENCIA_ALERTA_DIAS:
-        return ["background-color: rgba(255,23,68,0.28); color:#ffd9df;"] * len(fila)
-    return [""] * len(fila)
+    df = df_facturas.copy()
+    if (
+        "Nombre" not in df.columns
+        or df_clientes.empty
+        or not {"Cliente", "Límite de Crédito"}.issubset(df_clientes.columns)
+    ):
+        if "Límite de Crédito" not in df.columns:
+            df["Límite de Crédito"] = np.nan
+        return df
+
+    limites = df_clientes[["Cliente", "Límite de Crédito"]].drop_duplicates(subset="Cliente")
+    return df.merge(
+        limites, how="left", left_on="Nombre", right_on="Cliente", suffixes=("", "_cli")
+    ).drop(columns=["Cliente_cli"], errors="ignore")
+
+
+def construir_tabla_cartera(df_facturas: pd.DataFrame, df_clientes: pd.DataFrame) -> pd.DataFrame:
+    """Tabla de Acción Inmediata de cobranza: una fila por cliente CON
+    saldo pendiente, con las salidas del Motor de Riesgo Crediticio:
+
+      - Monto Pendiente: saldo total sin cobrar del cliente.
+      - Días de Vencimiento: mayor atraso entre sus facturas impagas
+        (hoy - Vencimiento; 0 si ninguna está vencida).
+      - Nivel de Exposición: Monto Pendiente / Límite de Crédito. Un
+        límite en blanco o 0 se trata como límite infinito (exposición
+        0.0), nunca como división por cero.
+      - Alerta: 🔴 Crítico (Exposición > 1.0 o vencido > 30 días),
+        🟡 Precaución (Exposición > 0.8 o cualquier factura vencida),
+        🟢 Sano (resto).
+    """
+    if not {"Nombre", "Saldo Pendiente"}.issubset(df_facturas.columns):
+        return pd.DataFrame(columns=COLUMNAS_TABLA_CARTERA)
+
+    df_validas = cruzar_facturas_con_clientes(df_facturas, df_clientes).dropna(subset=["Nombre"])
+    if df_validas.empty:
+        return pd.DataFrame(columns=COLUMNAS_TABLA_CARTERA)
+    df_validas = df_validas.copy()
+
+    hoy = pd.Timestamp(datetime.now().date())
+    if "Vencimiento" in df_validas.columns:
+        dias_atraso = (hoy - df_validas["Vencimiento"]).dt.days
+    else:
+        dias_atraso = pd.Series(np.nan, index=df_validas.index)
+
+    # Solo cuenta como "vencido" si tiene fecha de vencimiento pasada Y
+    # todavía tiene saldo pendiente; el resto se trata como 0 días de
+    # atraso (al día).
+    vencido_valido = dias_atraso.notna() & (dias_atraso > 0) & (df_validas["Saldo Pendiente"] > 0)
+    df_validas["_dias_vencido"] = np.where(vencido_valido, dias_atraso, 0)
+
+    resumen = (
+        df_validas.groupby("Nombre")
+        .agg(**{
+            "Monto Pendiente": ("Saldo Pendiente", "sum"),
+            "Días de Vencimiento": ("_dias_vencido", "max"),
+            "Límite de Crédito": ("Límite de Crédito", "max"),
+        })
+        .reset_index()
+        .rename(columns={"Nombre": "Cliente"})
+    )
+    resumen = resumen[resumen["Monto Pendiente"] > 0].copy()
+    if resumen.empty:
+        return pd.DataFrame(columns=COLUMNAS_TABLA_CARTERA)
+
+    # Nivel de Exposición con límite en blanco/0 => límite infinito.
+    limite = pd.to_numeric(resumen["Límite de Crédito"], errors="coerce")
+    resumen["Nivel de Exposición"] = np.where(
+        limite.notna() & (limite > 0),
+        resumen["Monto Pendiente"] / limite.replace(0, np.nan),
+        0.0,
+    )
+    resumen["Nivel de Exposición"] = resumen["Nivel de Exposición"].fillna(0.0)
+
+    def _alerta(fila: pd.Series) -> str:
+        if fila["Nivel de Exposición"] > EXPOSICION_CRITICA or fila["Días de Vencimiento"] > DIAS_DEUDA_CRITICA:
+            return "🔴 Crítico"
+        if fila["Nivel de Exposición"] > EXPOSICION_PRECAUCION or fila["Días de Vencimiento"] > 0:
+            return "🟡 Precaución"
+        return "🟢 Sano"
+
+    resumen["Días de Vencimiento"] = resumen["Días de Vencimiento"].astype(int)
+    resumen["Alerta"] = resumen.apply(_alerta, axis=1)
+    resumen = resumen.sort_values(
+        ["Nivel de Exposición", "Días de Vencimiento", "Monto Pendiente"],
+        ascending=[False, False, False],
+    )
+    return resumen[COLUMNAS_TABLA_CARTERA].reset_index(drop=True)
+
+
+# ==========================================================================
+# 4E. METAS DINAMICAS POR CATEGORIA (Centro de Control de Metas)
+# ==========================================================================
+#
+# Metas mensuales por defecto de las 4 categorias principales del negocio.
+# Son editables en vivo desde el sidebar (st.session_state); la Meta
+# Mensual global del Pace to Goal es la suma de las 4.
+METAS_CATEGORIAS_DEFAULT: dict[str, float] = {
+    "Mayor": 60_000.0,
+    "Institucional": 20_000.0,
+    "Industrial": 45_000.0,
+    "Registrados": 21_000.0,
+}
+
+
+def calcular_avance_metas(df_facturas: pd.DataFrame, metas: dict[str, float]) -> list[dict]:
+    """Para cada categoria del Centro de Control, suma la Facturación Real
+    ("Monto Facturado" de la sabana YA filtrada por el Mes/Año global) de
+    los clientes cuya "Categoría de Cliente" matchea la categoria (por
+    substring, case-insensitive, para tolerar variantes como "Mayorista").
+
+    Devuelve una lista de dicts {categoria, meta, real, avance} lista para
+    pintar las 4 tarjetas de progreso. Nunca lanza KeyError: si la sabana
+    no trae "Categoría de Cliente" o viene vacia, el real es 0.
+    """
+    tiene_categoria = (
+        not df_facturas.empty
+        and {"Categoría de Cliente", "Monto Facturado"}.issubset(df_facturas.columns)
+    )
+    filas = []
+    for categoria, meta in metas.items():
+        if tiene_categoria:
+            mascara = df_facturas["Categoría de Cliente"].astype(str).str.contains(
+                categoria, case=False, na=False
+            )
+            real = float(df_facturas.loc[mascara, "Monto Facturado"].sum())
+        else:
+            real = 0.0
+        avance = (real / meta) if meta > 0 else 0.0
+        filas.append({"categoria": categoria, "meta": meta, "real": real, "avance": avance})
+    return filas
+
+
+# ==========================================================================
+# 4F. MOTOR PARETO (EL 20/80 DEL CRECIMIENTO)
+# ==========================================================================
+#
+# Porcentaje del volumen total que define el corte Pareto: los clientes
+# mas grandes que, acumulados, componen hasta el 80% de la facturacion.
+PARETO_UMBRAL_VOLUMEN = 0.80
+
+# Dias sin comprar a partir de los cuales un cliente Pareto pasa de
+# "✅ Sano" a "🚨 Oportunidad de Rescate / Caída de Volumen".
+PARETO_DIAS_ALERTA = 15
+
+COLUMNAS_PARETO = [
+    "Cliente", "Vendedor", "Volumen Histórico", "Días desde última compra", "Alerta de Crecimiento",
+]
+
+
+def construir_pareto(df_facturas: pd.DataFrame) -> pd.DataFrame:
+    """Aísla a los clientes Pareto: agrupa la facturación histórica por
+    cliente, la ordena de mayor a menor y corta en el conjunto de clientes
+    que acumulan el 80% del volumen (PARETO_UMBRAL_VOLUMEN, incluyendo al
+    cliente que cruza la línea). Es el ~20% de cuentas que sostiene el
+    negocio.
+
+    Sobre ese Top calcula "Días desde última compra" y la Alerta de
+    Crecimiento: 🚨 Oportunidad de Rescate si lleva más de
+    PARETO_DIAS_ALERTA días sin comprar, ✅ Sano si compró hace poco.
+
+    Debe recibir la sabana con los filtros GLOBALES aplicados pero SIN el
+    filtro de Mes/Año: el volumen es histórico y la recencia se mide
+    contra hoy. Devuelve un dataframe vacío (columnas garantizadas) si
+    faltan las columnas mínimas o no hay datos.
+    """
+    if df_facturas.empty or not {"Nombre", "Monto Facturado"}.issubset(df_facturas.columns):
+        return pd.DataFrame(columns=COLUMNAS_PARETO)
+
+    df_validas = df_facturas.dropna(subset=["Nombre"]).copy()
+    if df_validas.empty or df_validas["Monto Facturado"].sum() <= 0:
+        return pd.DataFrame(columns=COLUMNAS_PARETO)
+
+    agregaciones: dict[str, tuple] = {"Volumen Histórico": ("Monto Facturado", "sum")}
+    if "Manager" in df_validas.columns:
+        # El "Vendedor" del cliente = el manager de su factura más frecuente.
+        agregaciones["Vendedor"] = ("Manager", lambda s: s.mode().iat[0] if not s.mode().empty else "Sin dato")
+    if "Fecha de Emisión" in df_validas.columns:
+        agregaciones["Última Compra"] = ("Fecha de Emisión", "max")
+
+    resumen = (
+        df_validas.groupby("Nombre")
+        .agg(**agregaciones)
+        .reset_index()
+        .rename(columns={"Nombre": "Cliente"})
+        .sort_values("Volumen Histórico", ascending=False)
+    )
+
+    # Corte Pareto: clientes cuyo acumulado cae dentro del 80% del volumen
+    # total, incluyendo al que cruza el umbral (shift para no excluirlo).
+    total = float(resumen["Volumen Histórico"].sum())
+    acumulado_previo = resumen["Volumen Histórico"].cumsum().shift(fill_value=0.0)
+    pareto = resumen[acumulado_previo < total * PARETO_UMBRAL_VOLUMEN].copy()
+
+    hoy = pd.Timestamp(datetime.now().date())
+    if "Última Compra" in pareto.columns:
+        pareto["Días desde última compra"] = (hoy - pareto["Última Compra"]).dt.days
+    else:
+        pareto["Días desde última compra"] = np.nan
+
+    def _alerta_crecimiento(dias) -> str:
+        if pd.isna(dias):
+            return "Sin fecha"
+        if dias > PARETO_DIAS_ALERTA:
+            return "🚨 Oportunidad de Rescate / Caída de Volumen"
+        return "✅ Sano"
+
+    pareto["Alerta de Crecimiento"] = pareto["Días desde última compra"].apply(_alerta_crecimiento)
+    if "Vendedor" not in pareto.columns:
+        pareto["Vendedor"] = "Sin dato"
+    pareto["Días desde última compra"] = pareto["Días desde última compra"].fillna(-1).astype(int)
+
+    return pareto[COLUMNAS_PARETO].reset_index(drop=True)
+
+
+def mostrar_estado_vacio(mensaje: str, icono: str = "✨") -> None:
+    """Feedback de estado sin ruido técnico: en vez de un st.warning con
+    tono de error, dibuja dentro de un st.empty() un mensaje motivacional
+    centrado (ej. "¡Tu cartera está saludable!") para cuando un filtro
+    simplemente no trae datos, que no es lo mismo que un fallo técnico.
+    """
+    placeholder = st.empty()
+    with placeholder.container():
+        st.markdown(
+            f'<div class="empty-state"><span class="empty-state-icon">{icono}</span>{mensaje}</div>',
+            unsafe_allow_html=True,
+        )
 
 
 # ==========================================================================
@@ -1448,24 +1725,15 @@ df_facturas, facturacion_en_vivo = cargar_facturacion_segura()
 
 st.title("🎨 Dashboard de Cobertura - Portafolio PPG / Glidden")
 
-if datos_en_vivo:
-    st.success("Conectado a Google Sheets en vivo.", icon="✅")
-else:
-    st.info(
-        "Mostrando datos SIMULADOS (mock) de 29 cuentas. No se pudo leer "
-        "el CSV publico del Google Sheet (revisa que siga compartido como "
-        "'Cualquier usuario con el enlace' y que la URL/gid en app.py sea "
-        "correcta).",
-        icon="ℹ️",
-    )
-
+# Feedback de estado sin ruido visual: una sola línea discreta en vez de
+# banners de color a todo lo ancho, y solo cuando hay algo que avisar.
+_avisos_estado = []
+if not datos_en_vivo:
+    _avisos_estado.append("📋 clientes: datos simulados (Google Sheet no disponible)")
 if not facturacion_en_vivo:
-    st.warning(
-        "No se pudo leer la sábana de facturación diaria (revisa que el "
-        "Sheet siga público y que la URL en app.py sea correcta). La "
-        "sección de facturación quedará vacía.",
-        icon="⚠️",
-    )
+    _avisos_estado.append("📋 facturación: no disponible")
+if _avisos_estado:
+    st.caption(" · ".join(_avisos_estado))
 
 # --------------------------------------------------------------------------
 # PANEL LATERAL: LIVE REFRESH + FILTROS ENCADENADOS + MARGEN DE GANANCIA
@@ -1485,149 +1753,159 @@ with st.sidebar:
     st.divider()
 
     # ------------------------------------------------------------------
-    # FILTROS ENCADENADOS DENTRO DE UN st.form(): mover/tocar un multiselect
-    # NO dispara un rerun de la app (eso es lo que congelaba la pantalla
-    # con un efecto de "pantalla opaca" en cada click). El dashboard
-    # completo (KPIs, mapa, tabla, facturación) solo recalcula y renderiza
-    # cuando se presiona el botón físico "✅ Aplicar Filtros".
+    # CENTRO DE CONTROL DE METAS (st.session_state): metas mensuales
+    # editables en vivo por categoria de negocio. Cambiar una meta
+    # recalcula las tarjetas de progreso y el Pace to Goal en el mismo
+    # rerun reactivo de Streamlit, sin st.rerun() manual.
     # ------------------------------------------------------------------
-    with st.form("filtros_form"):
-        st.markdown('<div class="sidebar-title">🎯 Filtros</div>', unsafe_allow_html=True)
-
-        # NOTA UX: las opciones de estos multiselect son los valores YA
-        # normalizados (minusculas, sin espacios) por
-        # normalizar_columnas_clave, que es lo que garantiza que el cruce
-        # con la sábana de Facturación nunca falle por "Caracas " vs
-        # "CARACAS". `format_func` se encarga de mostrarlos capitalizados
-        # (.title()) sin alterar el valor real usado para filtrar.
-        categorias_disponibles = sorted(df["Categoría General"].unique().tolist())
-        categorias_seleccionadas = st.multiselect(
-            "Categoría general del cliente",
-            categorias_disponibles,
-            default=categorias_disponibles,
-            format_func=titular_para_mostrar,
-        )
-
-        # Filtros ENCADENADOS: cada multiselect recalcula sus opciones
-        # sobre la última selección APLICADA (la del submit anterior), ya
-        # que el form no dispara reruns con cada click intermedio.
-        df_para_opciones = df[df["Categoría General"].isin(categorias_seleccionadas)]
-
-        vendedores_disponibles = (
-            sorted(df_para_opciones["Manager"].dropna().unique().tolist())
-            if "Manager" in df_para_opciones.columns else []
-        )
-        vendedores_seleccionados = st.multiselect(
-            "Vendedor / Manager",
-            vendedores_disponibles,
-            default=vendedores_disponibles,
-            format_func=titular_para_mostrar,
-        )
-        if "Manager" in df_para_opciones.columns:
-            df_para_opciones = df_para_opciones[df_para_opciones["Manager"].isin(vendedores_seleccionados)]
-
-        canales_disponibles = (
-            sorted(df_para_opciones["Tipo de Lead"].dropna().unique().tolist())
-            if "Tipo de Lead" in df_para_opciones.columns else []
-        )
-        canales_seleccionados = st.multiselect(
-            "Canal / Tipo de Lead", canales_disponibles, default=canales_disponibles
-        )
-        if "Tipo de Lead" in df_para_opciones.columns:
-            df_para_opciones = df_para_opciones[df_para_opciones["Tipo de Lead"].isin(canales_seleccionados)]
-
-        zonas_disponibles = (
-            sorted(df_para_opciones["Zona"].dropna().unique().tolist())
-            if "Zona" in df_para_opciones.columns else []
-        )
-        zonas_seleccionadas = st.multiselect(
-            "Zona",
-            zonas_disponibles,
-            default=zonas_disponibles,
-            format_func=titular_para_mostrar,
-        )
-
-        st.divider()
-        solo_cuentas_clave = st.toggle(
-            "🌟 Solo Cuentas Clave",
-            value=False,
-            help="Filtro de acceso rápido: aísla en el mapa y las tablas solo a " + ", ".join(CUENTAS_CLAVE) + ".",
-        )
-
-        st.divider()
-        st.markdown('<div class="sidebar-title">📅 Periodo de Facturación</div>', unsafe_allow_html=True)
-        st.caption("Filtra la sábana de facturas. Se encadena con Vendedor y Cuentas Clave.")
-
-        # La sabana de facturas se filtra por Manager (Vendedor) y por
-        # Cuentas Clave ANTES de calcular las opciones de Mes/Año, para que
-        # el filtro de periodo quede encadenado con el resto de la
-        # selección (misma lógica de encadenado que los filtros de arriba).
-        df_facturas_para_opciones = df_facturas.copy()
-        if "Manager" in df_facturas_para_opciones.columns:
-            df_facturas_para_opciones = df_facturas_para_opciones[
-                df_facturas_para_opciones["Manager"].isin(vendedores_seleccionados)
-            ]
-        if solo_cuentas_clave and "Nombre" in df_facturas_para_opciones.columns:
-            df_facturas_para_opciones = df_facturas_para_opciones[
-                df_facturas_para_opciones["Nombre"].apply(es_cuenta_clave)
-            ]
-
-        if "Fecha de Emisión" in df_facturas_para_opciones.columns:
-            periodos_ordenados = (
-                df_facturas_para_opciones["Fecha de Emisión"]
-                .dropna()
-                .dt.to_period("M")
-                .drop_duplicates()
-                .sort_values(ascending=False)
+    with st.expander("⚙️ Centro de Control de Metas"):
+        st.caption("Meta mensual de facturación por categoría de cliente.")
+        metas_categorias: dict[str, float] = {}
+        for _categoria, _meta_default in METAS_CATEGORIAS_DEFAULT.items():
+            metas_categorias[_categoria] = st.number_input(
+                f"Meta {_categoria} ($)",
+                min_value=0.0,
+                value=_meta_default,
+                step=1_000.0,
+                format="%.0f",
+                key=f"meta_{_categoria.lower()}",
             )
-            opciones_periodo = [str(p) for p in periodos_ordenados]
-        else:
-            opciones_periodo = []
+    # La Meta Mensual global (Pace to Goal) es la suma de las 4 metas.
+    meta_mensual_facturacion = float(sum(metas_categorias.values()))
 
-        periodos_seleccionados = st.multiselect(
-            "Mes / Año (AAAA-MM)", opciones_periodo, default=opciones_periodo
+    # ------------------------------------------------------------------
+    # SELECTOR GLOBAL DE MES/AÑO (reactivo, FUERA del form de filtros):
+    # filtra de forma global la sabana de facturacion y el pipeline de
+    # Odoo. Cualquier cambio recalcula la vista completa al instante.
+    # ------------------------------------------------------------------
+    OPCION_TODOS_LOS_MESES = "Todos los meses"
+    if "Fecha de Emisión" in df_facturas.columns:
+        _periodos = (
+            df_facturas["Fecha de Emisión"]
+            .dropna()
+            .dt.to_period("M")
+            .drop_duplicates()
+            .sort_values(ascending=False)
         )
+        opciones_mes_global = [OPCION_TODOS_LOS_MESES] + [str(p) for p in _periodos]
+    else:
+        opciones_mes_global = [OPCION_TODOS_LOS_MESES]
 
-        st.form_submit_button("✅ Aplicar Filtros", type="primary", use_container_width=True)
+    # Arranca en el mes más reciente (no en "Todos los meses"): las metas
+    # son mensuales y compararlas contra todo el histórico las infla.
+    mes_global = st.selectbox(
+        "📅 Mes / Año (global)",
+        opciones_mes_global,
+        index=1 if len(opciones_mes_global) > 1 else 0,
+        key="mes_global",
+        help="Filtra de forma global la facturación y el pipeline de Odoo. El mapa y la lista de clientes no dependen de fechas.",
+    )
+
+    st.divider()
 
     # ------------------------------------------------------------------
-    # A partir de aquí se aplica la cadena de filtros DE VERDAD. Esto solo
-    # se ejecuta cuando el script completo corre (primera carga, "Aplicar
-    # Filtros" o "Actualizar Datos"): un click dentro del form de arriba no
-    # llega hasta acá, por lo que el mapa/tabla/KPIs nunca se recalculan a
-    # medio camino de que el usuario arme su selección.
+    # MOTOR DE FILTROS OMNICANAL (SIDEBAR ABSOLUTO). Regla de Oro: estos
+    # filtros se aplican a df (clientes) y df_facturas AQUÍ, inmediatamente
+    # después de la carga y ANTES de que se calcule cualquier métrica,
+    # meta, Pareto o tabla. Son reactivos (sin st.form): seleccionar un
+    # vendedor recalcula absolutamente todo el dashboard solo para él.
+    # El mapa ya no sufre con los reruns porque vive detrás de un toggle
+    # dentro de un @st.fragment y la geocodificación está cacheada.
     # ------------------------------------------------------------------
-    df_filtrado = df[df["Categoría General"].isin(categorias_seleccionadas)]
-    if "Manager" in df_filtrado.columns:
+    st.markdown('<div class="sidebar-title">🎯 Filtros Globales</div>', unsafe_allow_html=True)
+    st.caption("Se aplican a TODO el dashboard: metas, Pareto, radar, riesgo y facturación.")
+
+    def _opciones_columna(*fuentes: tuple[pd.DataFrame, str]) -> list[str]:
+        """Union ordenada de los valores de una columna a través de varios
+        dataframes (ej. Manager existe en Clientes Y en Facturas)."""
+        valores: set[str] = set()
+        for df_fuente, columna in fuentes:
+            if columna in df_fuente.columns:
+                valores |= set(df_fuente[columna].dropna().astype(str))
+        return sorted(v for v in valores if v and v.lower() not in ("nan", "sin dato"))
+
+    vendedores_disponibles = _opciones_columna((df, "Manager"), (df_facturas, "Manager"))
+    zonas_disponibles = _opciones_columna((df, "Zona"))
+    categorias_disponibles = _opciones_columna(
+        (df_facturas, "Categoría de Cliente"), (df, "Categoría General")
+    )
+
+    vendedores_seleccionados = st.multiselect(
+        "Vendedor (Manager)", vendedores_disponibles, default=vendedores_disponibles
+    )
+    zonas_seleccionadas = st.multiselect(
+        "Zona", zonas_disponibles, default=zonas_disponibles
+    )
+    categorias_seleccionadas = st.multiselect(
+        "Categoría (Mayor / Institucional / Industrial / Registrados)",
+        categorias_disponibles,
+        default=categorias_disponibles,
+    )
+    solo_cuentas_clave = st.toggle(
+        "🌟 Solo Cuentas Clave",
+        value=False,
+        help="Filtro de acceso rápido: aísla en el mapa y las tablas solo a " + ", ".join(CUENTAS_CLAVE) + ".",
+    )
+
+    def _filtro_activo(seleccion: list[str], opciones: list[str]) -> bool:
+        """True solo si el usuario REALMENTE acotó el filtro: con todas
+        las opciones marcadas el filtro es un no-op, lo que evita vaciar
+        un dataframe que no tiene esa columna con el mismo vocabulario."""
+        return bool(opciones) and set(seleccion) != set(opciones)
+
+    # --- Aplicación ABSOLUTA sobre df (clientes) ---
+    df_filtrado = df.copy()
+    if _filtro_activo(vendedores_seleccionados, vendedores_disponibles) and "Manager" in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado["Manager"].isin(vendedores_seleccionados)]
-    if "Tipo de Lead" in df_filtrado.columns:
-        df_filtrado = df_filtrado[df_filtrado["Tipo de Lead"].isin(canales_seleccionados)]
-    if "Zona" in df_filtrado.columns:
+    if _filtro_activo(zonas_seleccionadas, zonas_disponibles) and "Zona" in df_filtrado.columns:
         df_filtrado = df_filtrado[df_filtrado["Zona"].isin(zonas_seleccionadas)]
+    # Categoría en clientes: solo se aplica si "Categoría General" comparte
+    # vocabulario con la selección (protección contra hojas donde la
+    # categoría de negocio vive solo en la sabana de facturas).
+    if _filtro_activo(categorias_seleccionadas, categorias_disponibles) and "Categoría General" in df_filtrado.columns:
+        if set(df_filtrado["Categoría General"].dropna().astype(str)) & set(categorias_seleccionadas):
+            df_filtrado = df_filtrado[df_filtrado["Categoría General"].isin(categorias_seleccionadas)]
     if solo_cuentas_clave:
         df_filtrado = df_filtrado[df_filtrado["Cliente"].apply(es_cuenta_clave)]
 
-    # True si el usuario dejó los filtros en su estado "sin filtrar" (todas
-    # las opciones seleccionadas y el toggle de Cuentas Clave apagado): se
-    # usa para decidir la vista del mapa (overview de Caracas/Venezuela vs.
-    # zoom al subconjunto filtrado).
+    # --- Aplicación ABSOLUTA sobre df_facturas (ANTES de toda métrica) ---
+    # df_facturas_global respeta TODOS los filtros globales pero NO el
+    # Mes/Año: alimenta el Pace to Goal y el Motor Pareto, que necesitan
+    # el histórico completo (volumen histórico, días sin comprar, ritmo
+    # del mes en curso).
+    df_facturas_global = df_facturas.copy()
+    if _filtro_activo(vendedores_seleccionados, vendedores_disponibles) and "Manager" in df_facturas_global.columns:
+        df_facturas_global = df_facturas_global[df_facturas_global["Manager"].isin(vendedores_seleccionados)]
+    # Zona no existe en la sabana de facturas: se hereda cruzando por el
+    # nombre del cliente contra la lista de clientes ya filtrada por Zona.
+    if _filtro_activo(zonas_seleccionadas, zonas_disponibles) and "Nombre" in df_facturas_global.columns and "Zona" in df.columns:
+        nombres_en_zona = set(df.loc[df["Zona"].isin(zonas_seleccionadas), "Cliente"].astype(str))
+        df_facturas_global = df_facturas_global[df_facturas_global["Nombre"].astype(str).isin(nombres_en_zona)]
+    if _filtro_activo(categorias_seleccionadas, categorias_disponibles) and "Categoría de Cliente" in df_facturas_global.columns:
+        if set(df_facturas_global["Categoría de Cliente"].dropna().astype(str)) & set(categorias_seleccionadas):
+            df_facturas_global = df_facturas_global[
+                df_facturas_global["Categoría de Cliente"].isin(categorias_seleccionadas)
+            ]
+    if solo_cuentas_clave and "Nombre" in df_facturas_global.columns:
+        df_facturas_global = df_facturas_global[df_facturas_global["Nombre"].apply(es_cuenta_clave)]
+
+    # df_facturas_filtrado = filtros globales + Mes/Año global: alimenta
+    # metas, KPIs del periodo, riesgo y cobranza.
+    df_facturas_filtrado = df_facturas_global.copy()
+    if mes_global != OPCION_TODOS_LOS_MESES and "Fecha de Emisión" in df_facturas_filtrado.columns:
+        df_facturas_filtrado = df_facturas_filtrado[
+            df_facturas_filtrado["Fecha de Emisión"].dt.to_period("M").astype(str) == mes_global
+        ]
+
+    # True si el usuario dejó los filtros en su estado "sin filtrar": se
+    # usa para decidir la vista del mapa (overview de Venezuela vs. zoom
+    # al subconjunto filtrado).
     sin_filtros_activos = (
-        set(categorias_seleccionadas) == set(categorias_disponibles)
-        and set(vendedores_seleccionados) == set(vendedores_disponibles)
-        and set(canales_seleccionados) == set(canales_disponibles)
-        and set(zonas_seleccionadas) == set(zonas_disponibles)
+        not _filtro_activo(vendedores_seleccionados, vendedores_disponibles)
+        and not _filtro_activo(zonas_seleccionadas, zonas_disponibles)
+        and not _filtro_activo(categorias_seleccionadas, categorias_disponibles)
         and not solo_cuentas_clave
     )
-
-    df_facturas_filtrado = df_facturas.copy()
-    if "Manager" in df_facturas_filtrado.columns:
-        df_facturas_filtrado = df_facturas_filtrado[df_facturas_filtrado["Manager"].isin(vendedores_seleccionados)]
-    if solo_cuentas_clave and "Nombre" in df_facturas_filtrado.columns:
-        df_facturas_filtrado = df_facturas_filtrado[df_facturas_filtrado["Nombre"].apply(es_cuenta_clave)]
-    if "Fecha de Emisión" in df_facturas_filtrado.columns:
-        df_facturas_filtrado = df_facturas_filtrado[
-            df_facturas_filtrado["Fecha de Emisión"].dt.to_period("M").astype(str).isin(periodos_seleccionados)
-        ]
 
     st.divider()
     st.markdown('<div class="sidebar-title">📊 Margen de Ganancia Estimado</div>', unsafe_allow_html=True)
@@ -1665,84 +1943,123 @@ with st.sidebar:
         )
 
     st.divider()
-    st.markdown('<div class="sidebar-title">🎯 Meta Mensual de Facturación</div>', unsafe_allow_html=True)
-    st.caption("Ajusta la meta para recalcular el Pace to Goal (ritmo diario necesario, asumiendo 30 días de mes).")
-    meta_mensual_facturacion = st.number_input(
-        "Meta Mensual ($)",
-        min_value=0.0,
-        value=50_000.0,
-        step=1_000.0,
-        format="%.2f",
+    st.markdown('<div class="sidebar-title">🎯 Meta Mensual Global</div>', unsafe_allow_html=True)
+    st.caption(
+        f"${meta_mensual_facturacion:,.0f} = suma de las 4 metas por categoría "
+        "(⚙️ Centro de Control de Metas). Alimenta el Pace to Goal."
     )
 
 # --------------------------------------------------------------------------
-# CUERPO PRINCIPAL: DOS PESTAÑAS - "Radar de Clientes" (todo lo que ya
-# existia: metricas financieras, KPIs, mapa y facturacion diaria) y
-# "Pipeline de Odoo" (integracion en vivo via XML-RPC, seccion 1C).
+# CUERPO PRINCIPAL: 3 PESTAÑAS EJECUTIVAS (sin scroll infinito)
+#
+# Cada pestaña está enfocada en una sola decisión de negocio:
+#   - "Metas y Radar": avance de metas por categoría + pulso de
+#     facturación + mapa de cobertura bajo demanda.
+#   - "Control de Riesgo y Cartera": a quién cobrar hoy (Motor de Riesgo
+#     Crediticio + tabla de Acción Inmediata).
+#   - "Pipeline Odoo": pipeline de ventas en vivo vía XML-RPC.
 # --------------------------------------------------------------------------
-tab_radar, tab_pipeline_odoo = st.tabs(["📡 Radar de Clientes", "🧩 Pipeline de Odoo"])
+tab_metas, tab_riesgo, tab_odoo = st.tabs(
+    ["🎯 Metas y Radar", "🚨 Control de Riesgo y Cartera", "🧩 Pipeline Odoo"]
+)
 
-with tab_radar:
-    # ----------------------------------------------------------------------
-    # MOTOR DE METRICAS FINANCIERAS AVANZADAS (EN LA PARTE SUPERIOR, tal
-    # como se pidio) - Recencia, Frecuencia, Ciclo de Pago y Morosidad,
-    # calculados sobre la sabana de facturacion ya filtrada por Vendedor /
-    # Cuentas Clave / Mes-Año en el sidebar.
-    # ----------------------------------------------------------------------
-    st.markdown('<div class="section-title">📊 Métricas Financieras Avanzadas</div>', unsafe_allow_html=True)
+# ==========================================================================
+# PESTAÑA 1: METAS Y RADAR - Tarjetas de progreso por categoría, KPIs de
+# facturación y el Mapa (clusterizado) bajo demanda.
+# ==========================================================================
+with tab_metas:
+    # --------------------------------------------------------------------
+    # TARJETAS DE PROGRESO: Facturación Real vs Meta Configurada por
+    # categoría (Centro de Control de Metas), sobre la sabana filtrada por
+    # el Mes/Año global.
+    # --------------------------------------------------------------------
+    st.markdown('<div class="section-title">🎯 Avance de Metas por Categoría</div>', unsafe_allow_html=True)
+    st.caption(f"Facturación real del periodo seleccionado ({mes_global}) vs meta mensual configurada.")
 
-    metricas_financieras = calcular_metricas_financieras(df_facturas_filtrado)
+    avance_metas = calcular_avance_metas(df_facturas_filtrado, metas_categorias)
+    columnas_metas = st.columns(len(avance_metas))
+    for col_meta, item in zip(columnas_metas, avance_metas):
+        with col_meta:
+            st.metric(
+                f"🏁 {item['categoria']}",
+                f"${item['real']:,.0f}",
+                delta=f"{item['avance'] * 100:,.0f}% de ${item['meta']:,.0f}",
+                delta_color="normal" if item["avance"] >= 1.0 else "off",
+                help=(
+                    f"Facturación real de la categoría '{item['categoria']}' en el periodo global "
+                    f"seleccionado, contra su meta mensual (editable en ⚙️ Centro de Control de Metas)."
+                ),
+            )
+            st.progress(min(item["avance"], 1.0))
 
-    if not metricas_financieras["tiene_datos"]:
-        st.info("No hay datos de facturación suficientes para calcular estas métricas.", icon="ℹ️")
+    # --------------------------------------------------------------------
+    # MOTOR PARETO: el ~20% de clientes que genera el 80% del volumen
+    # histórico (respetando los filtros globales del sidebar, sin el
+    # filtro de mes: el volumen es histórico y la recencia es contra hoy).
+    # --------------------------------------------------------------------
+    st.subheader("🔥 Insights de Crecimiento: Tus Clientes Pareto")
+    st.caption(
+        f"Top de clientes que acumulan el {PARETO_UMBRAL_VOLUMEN:.0%} del volumen histórico filtrado. "
+        f"Si uno lleva más de {PARETO_DIAS_ALERTA} días sin comprar, hay volumen en riesgo: rescátalo primero."
+    )
+
+    tabla_pareto = construir_pareto(df_facturas_global)
+
+    if tabla_pareto.empty:
+        mostrar_estado_vacio("No hay facturación suficiente para calcular tus clientes Pareto.", icono="🔥")
     else:
-        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
-        with col_m1:
-            st.metric(
-                f"⏰ Clientes en Riesgo (Recencia > {RECENCIA_ALERTA_DIAS}d)",
-                f"{metricas_financieras['clientes_en_riesgo']}",
-                help=f"Clientes que llevan más de {RECENCIA_ALERTA_DIAS} días sin facturar, según la sábana de facturación filtrada.",
-            )
-        with col_m2:
-            frecuencia = metricas_financieras["frecuencia_promedio_dias"]
-            valor_frecuencia = f"{frecuencia:.0f} días" if frecuencia is not None else "Sin dato"
-            st.metric(
-                "🔁 Frecuencia Promedio de Compra",
-                valor_frecuencia,
-                help="Promedio de días entre compras consecutivas de un mismo cliente (solo cuentas con 2 o más facturas).",
-            )
-        with col_m3:
-            ciclo_pago = metricas_financieras["ciclo_pago_promedio_dias"]
-            valor_ciclo = f"{ciclo_pago:.1f} días" if ciclo_pago is not None else "Sin dato"
-            st.metric(
-                "💳 Ciclo de Pago Promedio",
-                valor_ciclo,
-                help="Promedio de días que tarda un cliente en pagar una factura, desde la emisión hasta el pago.",
-            )
-        with col_m4:
-            st.metric(
-                "🔴 Deuda Vencida (Morosidad)",
-                f"${metricas_financieras['deuda_vencida_total']:,.0f}",
-                help="Saldo pendiente de cobro de facturas cuya fecha de Vencimiento ya pasó.",
-            )
-        st.caption(
-            f"{metricas_financieras['facturas_vencidas']} factura(s) vencida(s) con saldo pendiente "
-            "componen la morosidad mostrada arriba."
+        en_rescate = int(tabla_pareto["Alerta de Crecimiento"].str.startswith("🚨").sum())
+        if en_rescate:
+            st.caption(f"🚨 {en_rescate} de {len(tabla_pareto)} clientes Pareto necesitan rescate hoy.")
+        volumen_maximo = float(tabla_pareto["Volumen Histórico"].max())
+        st.dataframe(
+            tabla_pareto,
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
+                "Vendedor": st.column_config.TextColumn("Vendedor", width="small"),
+                "Volumen Histórico": st.column_config.ProgressColumn(
+                    "Volumen Histórico",
+                    help="Facturación histórica acumulada del cliente, relativa al cliente más grande del grupo.",
+                    format="$%.0f",
+                    min_value=0,
+                    max_value=volumen_maximo if volumen_maximo > 0 else 1,
+                ),
+                "Días desde última compra": st.column_config.NumberColumn(
+                    "Días desde última compra",
+                    help="Días corridos desde la última factura emitida al cliente. -1 = sin fecha registrada.",
+                    format="%d días",
+                ),
+                "Alerta de Crecimiento": st.column_config.TextColumn(
+                    "Alerta de Crecimiento",
+                    help=(
+                        f"🚨 Más de {PARETO_DIAS_ALERTA} días sin comprar: volumen Pareto en riesgo de caída. "
+                        "✅ Compró hace poco: relación sana."
+                    ),
+                ),
+            },
         )
 
-        with st.expander("Ver detalle de Recencia por cliente"):
-            recencia_df = metricas_financieras["recencia_df"].copy()
-            recencia_df["Última Compra"] = recencia_df["Última Compra"].dt.strftime("%d/%m/%Y")
-            st.dataframe(
-                recencia_df.style.apply(resaltar_recencia, axis=1),
-                hide_index=True,
-                width="stretch",
-            )
+    st.markdown('<div class="section-title">Indicadores de facturación</div>', unsafe_allow_html=True)
 
-    # ----------------------------------------------------------------------
-    # FILA DE KPIs + MAPA DOMINANTE + TABLA
-    # ----------------------------------------------------------------------
-    st.markdown('<div class="section-title">Indicadores clave</div>', unsafe_allow_html=True)
+    hoy = datetime.now()
+    facturacion_historica_total = df_facturas_filtrado["Monto Facturado"].sum() if not df_facturas_filtrado.empty else 0.0
+    saldo_pendiente_total = df_facturas_filtrado["Saldo Pendiente"].sum() if not df_facturas_filtrado.empty else 0.0
+    facturas_emitidas = len(df_facturas_filtrado)
+
+    fechas_validas = (
+        df_facturas_filtrado["Fecha de Emisión"].dropna()
+        if "Fecha de Emisión" in df_facturas_filtrado.columns else pd.Series(dtype="datetime64[ns]")
+    )
+    if not fechas_validas.empty:
+        facturacion_ultimos_30_dias = df_facturas_filtrado.loc[
+            df_facturas_filtrado["Fecha de Emisión"] >= (hoy - pd.Timedelta(days=30)),
+            "Monto Facturado",
+        ].sum()
+    else:
+        facturacion_ultimos_30_dias = 0.0
+
     col_a, col_b, col_c, col_d, col_e = st.columns(5)
     with col_a:
         st.metric(
@@ -1763,88 +2080,28 @@ with tab_radar:
             help=f"{int(MARGEN_PORCENTAJE * 100)}% lineal y estricto sobre la Facturación Total filtrada (regla de negocio fija).",
         )
     with col_d:
-        visitas_prom = f"{df_filtrado['Visitas'].mean():.1f}" if len(df_filtrado) else "0"
         st.metric(
-            "🗓️ Visitas Promedio",
-            visitas_prom,
-            help="Promedio de visitas del mes por cuenta, dentro del grupo filtrado.",
+            "📅 Facturación Últimos 30 Días",
+            f"${facturacion_ultimos_30_dias:,.0f}",
+            help="Monto facturado en los últimos 30 días corridos desde hoy, dentro del filtrado activo.",
         )
     with col_e:
-        # Renombrado de "Cuentas en Alerta" a "Riesgo de Fuga": se usa la
-        # métrica de Recencia (facturación) en vez del conteo por Visitas,
-        # para que el número mostrado coincida exactamente con lo que dice
-        # el tooltip y no haya ambigüedad entre "poca cobertura" y "riesgo
-        # real".
         st.metric(
-            "🚨 Riesgo de Fuga",
-            f"{metricas_financieras['clientes_en_riesgo']}",
-            help=f"Clientes que llevan más de {RECENCIA_ALERTA_DIAS} días sin facturar.",
+            "🧾 Facturas Emitidas",
+            f"{facturas_emitidas:,}",
+            help="Cantidad de facturas emitidas dentro del periodo y filtros seleccionados.",
         )
 
-    # Mapa + tabla viven en un @st.fragment (render_mapa_y_tabla, definida
-    # en la sección 4): un componente pesado de construir/renderizar, ahora
-    # aislado del resto del rerun del dashboard.
-    render_mapa_y_tabla(df_filtrado, sin_filtros_activos)
-
-    # ----------------------------------------------------------------------
-    # FACTURACION DIARIA (SEGUNDA BASE DE DATOS TRANSACCIONAL)
-    # ----------------------------------------------------------------------
-    st.markdown('<div class="section-title">💵 Facturación Diaria (Sábana Transaccional)</div>', unsafe_allow_html=True)
-
     if df_facturas_filtrado.empty:
-        st.warning("No hay facturas que coincidan con los filtros seleccionados (Vendedor / Cuentas Clave / Mes-Año).")
+        mostrar_estado_vacio(
+            "No se encontraron registros activos de facturación para este filtro.", icono="📭"
+        )
     else:
-        hoy = datetime.now()
-        facturacion_historica_total = df_facturas_filtrado["Monto Facturado"].sum()
-        saldo_pendiente_total = df_facturas_filtrado["Saldo Pendiente"].sum()
-        facturas_emitidas = len(df_facturas_filtrado)
-
-        fechas_validas = df_facturas_filtrado["Fecha de Emisión"].dropna()
-        if not fechas_validas.empty:
-            facturacion_ultimos_30_dias = df_facturas_filtrado.loc[
-                df_facturas_filtrado["Fecha de Emisión"] >= (hoy - pd.Timedelta(days=30)),
-                "Monto Facturado",
-            ].sum()
-        else:
-            facturacion_ultimos_30_dias = 0.0
-
-        # El velocimetro de Pace to Goal se calcula sobre la sabana COMPLETA
-        # (sin el filtro de Mes/Año, que no tendria sentido para un "ritmo
-        # del mes en curso"), pero SI respeta Vendedor/Cuentas Clave para
-        # que la meta se pueda evaluar por vendedor o por cuenta
-        # estrategica.
-        df_facturas_para_pace = df_facturas.copy()
-        if "Manager" in df_facturas_para_pace.columns:
-            df_facturas_para_pace = df_facturas_para_pace[df_facturas_para_pace["Manager"].isin(vendedores_seleccionados)]
-        if solo_cuentas_clave and "Nombre" in df_facturas_para_pace.columns:
-            df_facturas_para_pace = df_facturas_para_pace[df_facturas_para_pace["Nombre"].apply(es_cuenta_clave)]
-        pace = calcular_pace_to_goal(df_facturas_para_pace, meta_mensual_facturacion)
-
-        col_f1, col_f2, col_f3, col_f4 = st.columns(4)
-        with col_f1:
-            st.metric(
-                "💵 Facturación Histórica",
-                f"${facturacion_historica_total:,.0f}",
-                help="Suma histórica de todas las facturas dentro del periodo y filtros seleccionados (Vendedor / Cuentas Clave / Mes-Año).",
-            )
-        with col_f2:
-            st.metric(
-                "📅 Facturación Últimos 30 Días",
-                f"${facturacion_ultimos_30_dias:,.0f}",
-                help="Monto facturado en los últimos 30 días corridos desde hoy, dentro del mismo filtrado.",
-            )
-        with col_f3:
-            st.metric(
-                "🧾 Facturas Emitidas",
-                f"{facturas_emitidas:,}",
-                help="Cantidad de facturas emitidas dentro del periodo y filtros seleccionados.",
-            )
-        with col_f4:
-            st.metric(
-                "⏳ Saldo Pendiente (Cobranza)",
-                f"${saldo_pendiente_total:,.0f}",
-                help="Suma del saldo pendiente de cobro de las facturas filtradas (incluye facturas aún no vencidas).",
-            )
+        # El velocimetro de Pace to Goal se calcula sobre df_facturas_global:
+        # respeta TODOS los filtros globales del sidebar (Vendedor, Zona,
+        # Categoría, Cuentas Clave) pero NO el Mes/Año, porque el "ritmo del
+        # mes en curso" siempre se mide contra el mes calendario actual.
+        pace = calcular_pace_to_goal(df_facturas_global, meta_mensual_facturacion)
 
         col_gauge, col_tendencia = st.columns([1, 2])
         with col_gauge:
@@ -1876,28 +2133,127 @@ with tab_radar:
                 )
                 st.area_chart(tendencia_mensual, height=300)
             else:
-                st.info("No hay fechas válidas en la sábana para construir la tendencia mensual.")
+                mostrar_estado_vacio("Sin fechas válidas para trazar la tendencia mensual.", icono="📈")
 
-        with st.expander("Ver facturas más recientes"):
-            columnas_detalle = [
-                c for c in ["Fecha de Emisión", "Factura", "Nombre", "Manager", "Monto Facturado", "Saldo Pendiente"]
-                if c in df_facturas_filtrado.columns
-            ]
-            st.dataframe(
-                con_columnas_tituladas(
-                    df_facturas_filtrado.dropna(subset=["Fecha de Emisión"])
-                    .sort_values("Fecha de Emisión", ascending=False)
-                    .head(50)[columnas_detalle],
-                    ["Manager"],
-                ),
-                hide_index=True,
-                width="stretch",
+    # --------------------------------------------------------------------
+    # MAPA INTELIGENTE: nunca se carga solo al abrir la página. Solo se
+    # construye (geocodificación + cientos de pines clusterizados) cuando
+    # el usuario activa el interruptor "Mostrar Mapa" aquí en Radar
+    # Comercial, la única vista donde vive el mapa.
+    # --------------------------------------------------------------------
+    st.markdown('<div class="section-title">🗺️ Mapa de cobertura</div>', unsafe_allow_html=True)
+    mostrar_mapa = st.toggle(
+        "Mostrar Mapa",
+        value=False,
+        key="mostrar_mapa_radar",
+        help="El mapa (con MarkerCluster) se construye bajo demanda para que esta vista abra rápido.",
+    )
+    if mostrar_mapa:
+        render_mapa(df_filtrado, sin_filtros_activos)
+    else:
+        st.caption("Activa el interruptor para cargar el mapa clusterizado de cobertura.")
+
+# ==========================================================================
+# PESTAÑA 2: CONTROL DE RIESGO Y CARTERA - Motor de Riesgo Crediticio +
+# tabla de Acción Inmediata (solo clientes con saldo pendiente).
+# ==========================================================================
+with tab_riesgo:
+    st.markdown('<div class="section-title">💼 Salud de la cartera</div>', unsafe_allow_html=True)
+
+    metricas_financieras = calcular_metricas_financieras(df_facturas_filtrado)
+
+    if not metricas_financieras["tiene_datos"]:
+        mostrar_estado_vacio("No se encontraron registros activos para evaluar la cartera.", icono="📭")
+    else:
+        col_m1, col_m2, col_m3, col_m4 = st.columns(4)
+        with col_m1:
+            st.metric(
+                f"⏰ Clientes en Riesgo (>{RECENCIA_ALERTA_DIAS}d sin comprar)",
+                f"{metricas_financieras['clientes_en_riesgo']}",
+                help=f"Clientes que llevan más de {RECENCIA_ALERTA_DIAS} días sin facturar, según la sábana filtrada.",
+            )
+        with col_m2:
+            st.metric(
+                "🔴 Deuda Vencida Total",
+                f"${metricas_financieras['deuda_vencida_total']:,.0f}",
+                help="Saldo pendiente de cobro de facturas cuya fecha de Vencimiento ya pasó.",
+            )
+        with col_m3:
+            ciclo_pago = metricas_financieras["ciclo_pago_promedio_dias"]
+            valor_ciclo = f"{ciclo_pago:.1f} días" if ciclo_pago is not None else "Sin dato"
+            st.metric(
+                "💳 Ciclo de Pago Promedio",
+                valor_ciclo,
+                help="Promedio de días que tarda un cliente en pagar una factura, desde la emisión hasta el pago.",
+            )
+        with col_m4:
+            frecuencia = metricas_financieras["frecuencia_promedio_dias"]
+            valor_frecuencia = f"{frecuencia:.0f} días" if frecuencia is not None else "Sin dato"
+            st.metric(
+                "🔁 Frecuencia de Compra",
+                valor_frecuencia,
+                help="Promedio de días entre compras consecutivas de un mismo cliente.",
             )
 
-# --------------------------------------------------------------------------
-# CUERPO PRINCIPAL: PESTAÑA "PIPELINE DE ODOO" (conexion XML-RPC en vivo)
-# --------------------------------------------------------------------------
-with tab_pipeline_odoo:
+    st.markdown('<div class="section-title">🧾 Tabla de Acción Inmediata</div>', unsafe_allow_html=True)
+    st.caption(
+        "Solo cuentas con saldo pendiente, cruzadas con su Límite de Crédito. "
+        "Ordenadas por mayor exposición y atraso primero, para decidir a quién llamar hoy."
+    )
+
+    # df_facturas_filtrado ya trae los filtros globales (Vendedor, Zona,
+    # Categoría, Cuentas Clave) + Mes/Año: un vendedor que se selecciona a
+    # sí mismo ve SOLO su propia lista de cobranza. df_filtrado (clientes
+    # filtrados) aporta el Límite de Crédito del cruce.
+    tabla_cartera = construir_tabla_cartera(df_facturas_filtrado, df_filtrado)
+
+    if tabla_cartera.empty:
+        mostrar_estado_vacio("¡Tu cartera está saludable! No hay saldos pendientes en este filtro.", icono="✅")
+    else:
+        monto_maximo = float(tabla_cartera["Monto Pendiente"].max())
+        st.dataframe(
+            tabla_cartera,
+            hide_index=True,
+            width="stretch",
+            column_config={
+                "Cliente": st.column_config.TextColumn("Cliente", width="medium"),
+                "Monto Pendiente": st.column_config.ProgressColumn(
+                    "Monto Pendiente",
+                    help="Saldo pendiente de cobro, en barra relativa al cliente con mayor deuda del filtro.",
+                    format="$%.0f",
+                    min_value=0,
+                    max_value=monto_maximo if monto_maximo > 0 else 1,
+                ),
+                "Días de Vencimiento": st.column_config.NumberColumn(
+                    "Días de Vencimiento",
+                    help="Mayor atraso entre las facturas impagas del cliente. 0 = sin facturas vencidas.",
+                    format="%d días",
+                ),
+                "Nivel de Exposición": st.column_config.NumberColumn(
+                    "Nivel de Exposición",
+                    help=(
+                        "Saldo Pendiente / Límite de Crédito del cliente. "
+                        "0% cuando el cliente no tiene límite definido (límite infinito). "
+                        f"Más de {EXPOSICION_PRECAUCION:.0%} = Precaución; más de {EXPOSICION_CRITICA:.0%} = Crítico."
+                    ),
+                    format="percent",
+                ),
+                "Alerta": st.column_config.TextColumn(
+                    "Alerta",
+                    width="small",
+                    help=(
+                        f"🟢 Sano · 🟡 Precaución (exposición > {EXPOSICION_PRECAUCION:.0%} o factura vencida) · "
+                        f"🔴 Crítico (exposición > {EXPOSICION_CRITICA:.0%} o más de {DIAS_DEUDA_CRITICA} días vencida)."
+                    ),
+                ),
+            },
+        )
+
+# ==========================================================================
+# PESTAÑA 3: PIPELINE ODOO - Conexión XML-RPC intacta, visualización
+# resumida a Oportunidades Abiertas y Valor Ponderado.
+# ==========================================================================
+with tab_odoo:
     st.markdown('<div class="section-title">🧩 Pipeline de Ventas (Odoo CRM)</div>', unsafe_allow_html=True)
     st.caption(
         "Conexión directa a Odoo vía XML-RPC (modelo crm.lead). Configura tus credenciales en "
@@ -1906,47 +2262,54 @@ with tab_pipeline_odoo:
 
     df_pipeline_odoo, odoo_conectado, mensaje_odoo = obtener_pipeline_odoo()
 
+    # El selector global de Mes/Año también gobierna el pipeline: se
+    # filtra por la Fecha de Cierre Esperada de cada oportunidad. Las
+    # oportunidades sin fecha se conservan solo en "Todos los meses".
+    if (
+        odoo_conectado
+        and not df_pipeline_odoo.empty
+        and mes_global != OPCION_TODOS_LOS_MESES
+        and "Fecha de Cierre Esperada" in df_pipeline_odoo.columns
+    ):
+        _cierres = pd.to_datetime(df_pipeline_odoo["Fecha de Cierre Esperada"], errors="coerce")
+        df_pipeline_odoo = df_pipeline_odoo[
+            _cierres.dt.to_period("M").astype(str) == mes_global
+        ]
+
     if not odoo_conectado:
         # Conexion fallida (sin credenciales, credenciales invalidas,
-        # timeout, instancia caida, etc.): mensaje amigable en vez de
-        # romper la app. El resto del dashboard sigue funcionando normal.
+        # timeout, instancia caida, etc.): esto SÍ es un problema técnico
+        # real, así que se mantiene como aviso claro (no es un "sin datos"
+        # motivacional, es algo que hay que corregir en secrets.toml).
         st.warning(f"⚠️ No se pudo conectar con Odoo: {mensaje_odoo}", icon="⚠️")
-        st.info(
-            "El Radar de Clientes sigue funcionando con normalidad en la otra pestaña. "
+        st.caption(
             "Revisa la sección [odoo] de .streamlit/secrets.toml (url, db, username, password) "
-            "y que la instancia sea alcanzable desde este servidor.",
-            icon="ℹ️",
+            "y que la instancia sea alcanzable desde este servidor."
         )
     elif df_pipeline_odoo.empty:
-        st.info(f"✅ {mensaje_odoo}", icon="✅")
+        mostrar_estado_vacio("No hay datos para esta selección.", icono="🧩")
     else:
-        st.success("✅ Conectado a Odoo en vivo.", icon="✅")
-
-        col_o1, col_o2, col_o3 = st.columns(3)
+        # Visualización resumida: las dos cifras que importan del pipeline.
+        col_o1, col_o2 = st.columns(2)
         with col_o1:
             st.metric(
                 "🧩 Oportunidades Abiertas",
                 f"{len(df_pipeline_odoo)}",
-                help="Cantidad de oportunidades activas (type='opportunity') en el pipeline de Odoo.",
+                help="Cantidad de oportunidades activas (type='opportunity') en el pipeline de Odoo, dentro del periodo global seleccionado.",
             )
         with col_o2:
-            monto_esperado_total = df_pipeline_odoo["Monto Esperado"].sum()
-            st.metric(
-                "💰 Monto Esperado Total",
-                f"${monto_esperado_total:,.0f}",
-                help="Suma de 'Monto Esperado' (expected_revenue) de todas las oportunidades abiertas del pipeline.",
+            valor_ponderado = float(
+                (df_pipeline_odoo["Monto Esperado"] * df_pipeline_odoo["Probabilidad (%)"] / 100.0).sum()
             )
-        with col_o3:
-            probabilidad_prom = df_pipeline_odoo["Probabilidad (%)"].mean()
             st.metric(
-                "🎯 Probabilidad Promedio",
-                f"{probabilidad_prom:.0f}%",
-                help="Promedio de la probabilidad de cierre de las oportunidades abiertas, según Odoo.",
+                "⚖️ Valor Ponderado del Pipeline",
+                f"${valor_ponderado:,.0f}",
+                help="Suma de Monto Esperado x Probabilidad de cierre de cada oportunidad: el valor realista del pipeline.",
             )
 
-        st.markdown('<div class="section-title">Detalle del Pipeline</div>', unsafe_allow_html=True)
-        st.dataframe(
-            df_pipeline_odoo.sort_values("Monto Esperado", ascending=False).reset_index(drop=True),
-            hide_index=True,
-            width="stretch",
-        )
+        with st.expander("Ver detalle del pipeline"):
+            st.dataframe(
+                df_pipeline_odoo.sort_values("Monto Esperado", ascending=False).reset_index(drop=True),
+                hide_index=True,
+                width="stretch",
+            )
